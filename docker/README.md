@@ -81,6 +81,52 @@ RADIUS authentication and accounting listen on host UDP ports `1812` and `1813`.
 
 MariaDB data remains in `./data/mysql`, FreeRADIUS init state remains in `./data/freeradius`, and daloRADIUS init state remains in `./data/daloradius` relative to this `docker/` directory.
 
+## Migrating from the previous root-level Docker layout
+
+Starting with this layout, Docker files moved from the repository root into the `docker/` directory. Existing installations that used the previous root-level `docker-compose.yml` should move their local Docker environment files and persistent data before starting the updated stack.
+
+> [!WARNING]
+> Do not start the new Compose stack before moving your existing `data/` directory. If `docker/data/mysql` is empty, MariaDB will initialize a new database and the application will look like a fresh installation even though the old database still exists under the previous root-level `data/mysql` path.
+
+From the repository root, stop the existing stack first:
+
+```bash
+docker compose down
+```
+
+Move the existing local environment file and persistent state into `docker/`:
+
+```bash
+mkdir -p docker
+
+# Move the Compose environment file if it exists.
+[ ! -f .env ] || mv .env docker/.env
+
+# Move persistent database/application state if it exists.
+[ ! -d data ] || mv data docker/data
+
+# Move first-start backup imports if you use them.
+mkdir -p docker/var
+[ ! -d var/backup ] || mv var/backup docker/var/backup
+```
+
+Then start the stack from the new Docker directory:
+
+```bash
+cd docker
+docker compose config --quiet
+docker compose up -d --build
+```
+
+After startup, verify that the existing database was reused:
+
+```bash
+docker compose ps
+docker compose exec -T radius-mysql sh -lc 'mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE '\''operators'\'';"'
+```
+
+If you intentionally want a fresh Docker deployment instead, do not move the old `data/` directory. Keep a backup of it outside the repository before removing it.
+
 ## Database migrations for upgrades
 
 Fresh Docker deployments initialize the database from the bundled schema. When upgrading an existing Docker deployment, check `../contrib/db/migrations/` in the updated source tree and apply the relevant SQL migrations before using newly added features.
