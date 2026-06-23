@@ -36,14 +36,14 @@ Back up the database first, then run the migration script from the daloRADIUS so
 For a standard MariaDB/MySQL installation:
 
 ```bash
-mariadb -u raduser -p raddb < contrib/db/migrations/2026-06-operator-totp-mfa.sql
+mariadb -u raduser -p raddb < ../contrib/db/migrations/2026-06-operator-totp-mfa.sql
 ```
 
-For a Docker Compose installation, run this from the directory that contains `docker-compose.yml`:
+For a Docker Compose installation, run this from the `docker/` directory that contains `docker-compose.yml`:
 
 ```bash
 docker compose exec -T radius-mysql sh -lc 'mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-  < contrib/db/migrations/2026-06-operator-totp-mfa.sql
+  < ../contrib/db/migrations/2026-06-operator-totp-mfa.sql
 ```
 
 The migration is idempotent: it adds the missing MFA columns and registers the MFA page in the operators ACL metadata if they are not already present.
@@ -92,7 +92,7 @@ The `totp_enabled` value should now be `0`.
 
 ## Docker Compose installation
 
-Run these commands from the directory that contains `docker-compose.yml`. Replace `administrator` with the operator username you want to unlock.
+Run these commands from the `docker/` directory that contains `docker-compose.yml`. Replace `administrator` with the operator username you want to unlock.
 
 Check that the operator exists:
 

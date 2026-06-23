@@ -1,5 +1,7 @@
 # Docker usage
 
+All Docker-related files live in this `docker/` directory so the repository root stays focused on application source and documentation.
+
 The Compose setup in `docker-compose.yml` starts a complete local daloRADIUS stack:
 
 - `radius-mysql`: MariaDB database;
@@ -9,6 +11,12 @@ The Compose setup in `docker-compose.yml` starts a complete local daloRADIUS sta
 Use `Dockerfile-standalone` only when MariaDB and FreeRADIUS are already managed outside this repository.
 
 ## Full Compose stack
+
+Run Docker Compose commands from this `docker/` directory:
+
+```bash
+cd docker
+```
 
 Create an environment file from the template:
 
@@ -71,18 +79,17 @@ Use this account only for the first login, then change the operator password fro
 
 RADIUS authentication and accounting listen on host UDP ports `1812` and `1813`.
 
-MariaDB data remains in `./data/mysql`, FreeRADIUS init state remains in `./data/freeradius`, and daloRADIUS init state remains in `./data/daloradius`.
-
+MariaDB data remains in `./data/mysql`, FreeRADIUS init state remains in `./data/freeradius`, and daloRADIUS init state remains in `./data/daloradius` relative to this `docker/` directory.
 
 ## Database migrations for upgrades
 
-Fresh Docker deployments initialize the database from the bundled schema. When upgrading an existing Docker deployment, check `contrib/db/migrations/` in the updated source tree and apply the relevant SQL migrations before using newly added features.
+Fresh Docker deployments initialize the database from the bundled schema. When upgrading an existing Docker deployment, check `../contrib/db/migrations/` in the updated source tree and apply the relevant SQL migrations before using newly added features.
 
-For example, to apply the operator MFA migration from the directory that contains `docker-compose.yml`:
+For example, to apply the operator MFA migration from this `docker/` directory:
 
 ```bash
 docker compose exec -T radius-mysql sh -lc 'mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-  < contrib/db/migrations/2026-06-operator-totp-mfa.sql
+  < ../contrib/db/migrations/2026-06-operator-totp-mfa.sql
 ```
 
 ## Import an existing database backup
@@ -136,10 +143,10 @@ rm -rf ./data
 
 ## Standalone web image
 
-Build the standalone web image:
+Build the standalone web image from this `docker/` directory while keeping the repository root as the build context:
 
 ```bash
-docker build -t daloradius-standalone -f Dockerfile-standalone .
+docker build -t daloradius-standalone -f Dockerfile-standalone ..
 ```
 
 Create a `daloradius.conf.php` for your external database and RADIUS settings, then mount it into the container:

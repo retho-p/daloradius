@@ -14,3 +14,8 @@ var/log/
 var/backup/
 app/common/includes/daloradius.conf.php
 app/common/library/htmlpurifier/HTMLPurifier/DefinitionCache/Serializer/HTML/
+docker/.env
+docker/.env.*
+!docker/.env.example
+docker/data/
+docker/var/backup/

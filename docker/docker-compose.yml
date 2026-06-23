@@ -27,8 +27,8 @@ services:
     image: lirantal/dalofreeradius
     container_name: radius
     build:
-      context: .
-      dockerfile: Dockerfile-freeradius
+      context: ..
+      dockerfile: docker/Dockerfile-freeradius
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -63,7 +63,9 @@ services:
 
   radius-web:
     image: lirantal/daloradius
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: radius-web
     restart: unless-stopped
     security_opt:
