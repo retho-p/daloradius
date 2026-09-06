@@ -11,7 +11,7 @@ MYSQL_USER=${MYSQL_USER:-raduser}
 MYSQL_PASSWORD=${MYSQL_PASSWORD:-radpass}
 MYSQL_WAIT_INTERVAL=${MYSQL_WAIT_INTERVAL:-5}
 DEFAULT_CLIENT_SECRET=${DEFAULT_CLIENT_SECRET:-testing123}
-DALORADIUS_STATUS_CLIENT_HOST=${DALORADIUS_STATUS_CLIENT_HOST:-radius-web}
+DALORADIUS_STATUS_CLIENT_NETWORK=${DALORADIUS_STATUS_CLIENT_NETWORK:-}
 DALORADIUS_STATUS_PORT=${DALORADIUS_STATUS_PORT:-18122}
 FREERADIUS_SQL_TLS=${FREERADIUS_SQL_TLS:-disabled}
 
@@ -48,7 +48,9 @@ function configure_daloradius_status_server {
 	local template_path=/app/freeradius-status-daloradius.conf
 	local status_path="$RADIUS_PATH/sites-available/status-daloradius"
 	local status_tmp
-	local client_host
+	local client_network="$DALORADIUS_STATUS_CLIENT_NETWORK"
+	local container_ip_address
+	local container_netmask
 	local client_secret
 
 	if ! test -f "$template_path"; then
@@ -56,11 +58,23 @@ function configure_daloradius_status_server {
 		exit 1
 	fi
 
-	client_host=$(escape_radius_config_value "$DALORADIUS_STATUS_CLIENT_HOST")
+	# Resolve the Docker network automatically. This is available before the
+	# web container starts, unlike the web container's DNS name.
+	if [ -z "$client_network" ]; then
+		container_ip_address=$(ifconfig eth0 | awk '/inet /{ print $2; exit }')
+		container_netmask=$(ifconfig eth0 | awk '/netmask/{ print $4; exit }')
+		client_network=$(ipcalc "$container_ip_address" "$container_netmask" | awk '/Network/{ print $2; exit }')
+	fi
+	if [ -z "$client_network" ]; then
+		echo "Unable to determine the Docker network for the daloRADIUS status client."
+		exit 1
+	fi
+
+	client_network=$(escape_radius_config_value "$client_network")
 	client_secret=$(escape_radius_config_value "$DEFAULT_CLIENT_SECRET")
 	status_tmp=$(mktemp)
 	sed \
-		-e "s|__DALO_STATUS_CLIENT_HOST__|$client_host|g" \
+		-e "s|__DALO_STATUS_CLIENT_NETWORK__|$client_network|g" \
 		-e "s|__DALO_STATUS_CLIENT_SECRET__|$client_secret|g" \
 		-e "s|port = 18122|port = $DALORADIUS_STATUS_PORT|g" \
 		"$template_path" > "$status_tmp"
