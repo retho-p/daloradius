@@ -68,6 +68,12 @@ function php_config_set {
     fi
 }
 
+function ensure_status_configuration {
+    php_config_set "CONFIG_STATUS_SERVER" "$DALORADIUS_STATUS_SERVER"
+    php_config_set "CONFIG_STATUS_PORT" "$DALORADIUS_STATUS_PORT"
+    php_config_set "CONFIG_STATUS_SECRET" "$DALORADIUS_STATUS_SECRET"
+}
+
 function init_daloradius {
 
     if ! test -f "$DALORADIUS_CONF_PATH" || ! test -s "$DALORADIUS_CONF_PATH"; then
@@ -86,9 +92,6 @@ function init_daloradius {
     php_config_set "CONFIG_MAINT_TEST_USER_RADIUSSERVER" "$DEFAULT_FREERADIUS_SERVER"
     [ -n "$DEFAULT_FREERADIUS_PORT" ] && php_config_set "CONFIG_MAINT_TEST_USER_RADIUSPORT" "$DEFAULT_FREERADIUS_PORT"
     [ -n "$DEFAULT_CLIENT_SECRET" ] && php_config_set "CONFIG_MAINT_TEST_USER_RADIUSSECRET" "$DEFAULT_CLIENT_SECRET"
-    php_config_set "CONFIG_STATUS_SERVER" "$DALORADIUS_STATUS_SERVER"
-    php_config_set "CONFIG_STATUS_PORT" "$DALORADIUS_STATUS_PORT"
-    [ -n "$DALORADIUS_STATUS_SECRET" ] && php_config_set "CONFIG_STATUS_SECRET" "$DALORADIUS_STATUS_SECRET"
 
     [ -n "$MAIL_SMTPADDR" ] && php_config_set "CONFIG_MAIL_SMTPADDR" "$MAIL_SMTPADDR"
     [ -n "$MAIL_PORT" ] && php_config_set "CONFIG_MAIL_SMTPPORT" "$MAIL_PORT"
@@ -226,6 +229,10 @@ else
     init_daloradius
     date > "$INIT_LOCK"
 fi
+
+# Keep the dedicated service-status credentials synchronized on upgrades and
+# existing containers without rerunning the full application initialization.
+ensure_status_configuration
 
 wait_for_mysql
 
