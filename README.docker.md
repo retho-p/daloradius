@@ -55,7 +55,7 @@ Check service state:
 docker compose ps
 ```
 
-The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS with the configured `DEFAULT_FREERADIUS_SERVER`, `DEFAULT_FREERADIUS_PORT`, and `DEFAULT_CLIENT_SECRET` values. An `Access-Reject` response still means FreeRADIUS is reachable; the probe uses a deliberately invalid test user. SSHd is shown as not applicable in the web container.
+The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS with the configured `DEFAULT_FREERADIUS_SERVER`, `DEFAULT_FREERADIUS_PORT`, and `DEFAULT_CLIENT_SECRET` values. The web container must be authorized as a RADIUS client with that shared secret; otherwise a healthy FreeRADIUS instance can correctly appear unreachable. An `Access-Reject` response still means FreeRADIUS is reachable; the probe uses a deliberately invalid test user. SSHd is shown as not applicable in the web container.
 
 Access the web interfaces:
 
