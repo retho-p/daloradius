@@ -1672,7 +1672,11 @@ $l['helpPage']['repmain'] = <<<EOF
 <h2 class="fs-6">Status</h2>
 <p>Provides information on server status and RADIUS component status.</p>
 EOF;
-$l['helpPage']['repstatradius'] = "Provides general information about the FreeRADIUS daemon and MySQL/MariaDB Database server";
+$l['helpPage']['repstatradius'] = <<<EOF
+Provides general information about the FreeRADIUS daemon and MySQL/MariaDB Database server.
+
+For the Docker deployment, the service-status check uses a dedicated internal FreeRADIUS Status-Server client for the daloRADIUS web container. It does not require a regular NAS entry for this check. If you use the operator "Test User Connectivity" feature, the web container still needs a restricted NAS/client entry with its Docker address or network and the configured shared secret. Do not authorize 0.0.0.0/0.
+EOF;
 $l['helpPage']['repstatserver'] = "Provides general information about the server itself: CPU Usage, Processes, Uptime, Memory usage, etc.";
 $l['helpPage']['repstatus'] = <<<EOF
 <h1 class="fs-5">Status</h1>

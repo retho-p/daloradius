@@ -33,8 +33,9 @@ RUN apt-get update \
 RUN mkdir /app /data
 WORKDIR /app
 
-# Copy init script to image
+# Copy init script and the internal daloRADIUS status listener template
 COPY ./init-freeradius.sh /app
+COPY ./contrib/docker/freeradius-status-daloradius.conf /app/freeradius-status-daloradius.conf
 
 # Make init.sh script executable
 RUN sed -i 's/\r$//' /app/init-freeradius.sh \

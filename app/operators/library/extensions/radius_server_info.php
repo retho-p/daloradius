@@ -75,9 +75,9 @@ function dalo_radius_check_local_service($daemon_names, $service_names = array()
 /**
  * Probe a RADIUS server with the configured daloRADIUS test endpoint.
  *
- * A RADIUS response proves that the server is reachable from the web
- * container. Access-Reject is intentionally considered healthy: the probe
- * uses a deliberately invalid user and is testing the daemon, not credentials.
+ * A response proves that the server is reachable from the web container.
+ * Docker uses the restricted Status-Server listener; local installations are
+ * checked through their local daemon/service names instead.
  */
 function dalo_radius_check_network_radius($config_values, $is_container) {
     if (!function_exists('exec')) {
@@ -96,7 +96,7 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
         : ($is_container ? 'radius' : '127.0.0.1');
     $port = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
         ? intval($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
-        : 1812;
+        : ($is_container ? 18122 : 1812);
     $secret = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET'])
         ? $config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET']
         : 'testing123';
@@ -108,12 +108,16 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
     $target = (filter_var($server, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false)
         ? sprintf('[%s]:%d', $server, $port)
         : sprintf('%s:%d', $server, $port);
-    $probe = 'User-Name = "daloRADIUS-status-probe", User-Password = "daloRADIUS-status-probe"';
+    $command_type = $is_container ? 'status' : 'auth';
+    $probe = $is_container
+        ? 'FreeRADIUS-Statistics-Type = 1'
+        : 'User-Name = "daloRADIUS-status-probe", User-Password = "daloRADIUS-status-probe"';
     $command = sprintf(
-        "printf '%%s\\n' %s | %s -r 1 -t 1 %s auth %s 2>&1",
+        "printf '%%s\\n' %s | %s -r 1 -t 1 %s %s %s 2>&1",
         escapeshellarg($probe),
         escapeshellarg($radclient_path[0]),
         escapeshellarg($target),
+        escapeshellarg($command_type),
         escapeshellarg($secret)
     );
 
@@ -122,7 +126,10 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
     exec($command, $output, $result_code);
     $output_string = implode("\n", $output);
 
-    return preg_match('/(?:Received\s+)?Access-(?:Accept|Reject|Challenge)/i', $output_string) === 1;
+    return preg_match(
+        '/(?:Received\\s+)?(?:Status-Server-Response|Access-(?:Accept|Reject|Challenge))/i',
+        $output_string
+    ) === 1;
 }
 
 /**

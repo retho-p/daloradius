@@ -11,6 +11,8 @@ MYSQL_USER=${MYSQL_USER:-raduser}
 MYSQL_PASSWORD=${MYSQL_PASSWORD:-radpass}
 MYSQL_WAIT_INTERVAL=${MYSQL_WAIT_INTERVAL:-5}
 DEFAULT_CLIENT_SECRET=${DEFAULT_CLIENT_SECRET:-testing123}
+DALORADIUS_STATUS_CLIENT_HOST=${DALORADIUS_STATUS_CLIENT_HOST:-radius-web}
+DALORADIUS_STATUS_PORT=${DALORADIUS_STATUS_PORT:-18122}
 FREERADIUS_SQL_TLS=${FREERADIUS_SQL_TLS:-disabled}
 
 MYSQL_DEFAULTS_FILE=""
@@ -36,6 +38,34 @@ function create_mysql_defaults_file {
 
 function escape_sed_replacement {
 	printf '%s' "$1" | sed -e 's/[\/&|\\]/\\&/g'
+}
+
+function escape_radius_config_value {
+	printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g' -e 's/"/\\"/g'
+}
+
+function configure_daloradius_status_server {
+	local template_path=/app/freeradius-status-daloradius.conf
+	local status_path="$RADIUS_PATH/sites-available/status-daloradius"
+	local status_tmp
+	local client_host
+	local client_secret
+
+	if ! test -f "$template_path"; then
+		echo "Missing daloRADIUS status listener template: $template_path"
+		exit 1
+	fi
+
+	client_host=$(escape_radius_config_value "$DALORADIUS_STATUS_CLIENT_HOST")
+	client_secret=$(escape_radius_config_value "$DEFAULT_CLIENT_SECRET")
+	status_tmp=$(mktemp)
+	sed \
+		-e "s|__DALO_STATUS_CLIENT_HOST__|$client_host|g" \
+		-e "s|__DALO_STATUS_CLIENT_SECRET__|$client_secret|g" \
+		-e "s|port = 18122|port = $DALORADIUS_STATUS_PORT|g" \
+		"$template_path" > "$status_tmp"
+	mv "$status_tmp" "$status_path"
+	ln -sf "$status_path" "$RADIUS_PATH/sites-enabled/status-daloradius"
 }
 
 function sql_escape {
@@ -344,6 +374,8 @@ if test -L "$RADIUS_PATH/mods-enabled/sql"; then
 	enable_sql_session_tracking
 	enable_group_nas_restrictions
 fi
+
+configure_daloradius_status_server
 
 DB_LOCK=/data/.db_init_done
 if test -f "$DB_LOCK"; then

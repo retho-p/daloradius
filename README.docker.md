@@ -55,7 +55,7 @@ Check service state:
 docker compose ps
 ```
 
-The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS with the configured `DEFAULT_FREERADIUS_SERVER`, `DEFAULT_FREERADIUS_PORT`, and `DEFAULT_CLIENT_SECRET` values. The web container must be authorized as a RADIUS client with that shared secret; otherwise a healthy FreeRADIUS instance can correctly appear unreachable. An `Access-Reject` response still means FreeRADIUS is reachable; the probe uses a deliberately invalid test user. SSHd is shown as not applicable in the web container.
+The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS through a dedicated internal `Status-Server` listener on UDP port `18122`. The official Compose setup creates a client restricted to the web container hostname and does not publish this port to the host. A regular NAS/client entry is still used by the operator **Test User Connectivity** feature; restrict it to the Docker web network and never authorize `0.0.0.0/0`. SSHd is shown as not applicable in the web container.
 
 Access the web interfaces:
 
