@@ -17,6 +17,9 @@ PASSWORD_MAX_LENGTH=${PASSWORD_MAX_LENGTH:-}
 DEFAULT_FREERADIUS_SERVER=${DEFAULT_FREERADIUS_SERVER:-radius}
 DEFAULT_FREERADIUS_PORT=${DEFAULT_FREERADIUS_PORT:-}
 DEFAULT_CLIENT_SECRET=${DEFAULT_CLIENT_SECRET:-}
+DALORADIUS_STATUS_SERVER=${DALORADIUS_STATUS_SERVER:-radius}
+DALORADIUS_STATUS_PORT=${DALORADIUS_STATUS_PORT:-18122}
+DALORADIUS_STATUS_SECRET=${DALORADIUS_STATUS_SECRET:-}
 MAIL_SMTPADDR=${MAIL_SMTPADDR:-}
 MAIL_PORT=${MAIL_PORT:-}
 MAIL_FROM=${MAIL_FROM:-}
@@ -53,9 +56,16 @@ function php_escape {
 
 function php_config_set {
     local key="$1"
-    local value
-    value=$(escape_sed_replacement "$(php_escape "$2")")
-    sed -i "s|\$configValues\['$key'\] = .*;|\$configValues['$key'] = '$value';|" "$DALORADIUS_CONF_PATH"
+    local php_value
+    local sed_value
+    php_value=$(php_escape "$2")
+    sed_value=$(escape_sed_replacement "$php_value")
+
+    if grep -Fq "\$configValues['$key']" "$DALORADIUS_CONF_PATH"; then
+        sed -i "s|\$configValues\['$key'\] = .*;|\$configValues['$key'] = '$sed_value';|" "$DALORADIUS_CONF_PATH"
+    else
+        printf "\$configValues['%s'] = '%s';\\n" "$key" "$php_value" >> "$DALORADIUS_CONF_PATH"
+    fi
 }
 
 function init_daloradius {
@@ -76,6 +86,9 @@ function init_daloradius {
     php_config_set "CONFIG_MAINT_TEST_USER_RADIUSSERVER" "$DEFAULT_FREERADIUS_SERVER"
     [ -n "$DEFAULT_FREERADIUS_PORT" ] && php_config_set "CONFIG_MAINT_TEST_USER_RADIUSPORT" "$DEFAULT_FREERADIUS_PORT"
     [ -n "$DEFAULT_CLIENT_SECRET" ] && php_config_set "CONFIG_MAINT_TEST_USER_RADIUSSECRET" "$DEFAULT_CLIENT_SECRET"
+    php_config_set "CONFIG_STATUS_SERVER" "$DALORADIUS_STATUS_SERVER"
+    php_config_set "CONFIG_STATUS_PORT" "$DALORADIUS_STATUS_PORT"
+    [ -n "$DALORADIUS_STATUS_SECRET" ] && php_config_set "CONFIG_STATUS_SECRET" "$DALORADIUS_STATUS_SECRET"
 
     [ -n "$MAIL_SMTPADDR" ] && php_config_set "CONFIG_MAIL_SMTPADDR" "$MAIL_SMTPADDR"
     [ -n "$MAIL_PORT" ] && php_config_set "CONFIG_MAIL_SMTPPORT" "$MAIL_PORT"

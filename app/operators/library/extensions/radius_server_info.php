@@ -91,15 +91,43 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
         return false;
     }
 
-    $server = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSSERVER'])
-        ? trim($config_values['CONFIG_MAINT_TEST_USER_RADIUSSERVER'])
-        : ($is_container ? 'radius' : '127.0.0.1');
-    $port = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
-        ? intval($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
-        : ($is_container ? 18122 : 1812);
-    $secret = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET'])
-        ? $config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET']
-        : 'testing123';
+    if ($is_container) {
+        $server = !empty($config_values['CONFIG_STATUS_SERVER'])
+            ? trim($config_values['CONFIG_STATUS_SERVER'])
+            : 'radius';
+        $port = !empty($config_values['CONFIG_STATUS_PORT'])
+            ? intval($config_values['CONFIG_STATUS_PORT'])
+            : 18122;
+        $secret = isset($config_values['CONFIG_STATUS_SECRET'])
+            ? (string) $config_values['CONFIG_STATUS_SECRET']
+            : '';
+
+        // Never fall back to a shared/default RADIUS secret for the internal
+        // status listener. Missing credentials must fail closed.
+        if ($secret === '') {
+            return false;
+        }
+
+        $command_type = 'status';
+        $probe = 'FreeRADIUS-Statistics-Type = 1';
+    } else {
+        $server = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSSERVER'])
+            ? trim($config_values['CONFIG_MAINT_TEST_USER_RADIUSSERVER'])
+            : '127.0.0.1';
+        $port = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
+            ? intval($config_values['CONFIG_MAINT_TEST_USER_RADIUSPORT'])
+            : 1812;
+        $secret = !empty($config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET'])
+            ? (string) $config_values['CONFIG_MAINT_TEST_USER_RADIUSSECRET']
+            : '';
+
+        if ($secret === '') {
+            return false;
+        }
+
+        $command_type = 'auth';
+        $probe = 'User-Name = "daloRADIUS-status-probe", User-Password = "daloRADIUS-status-probe"';
+    }
 
     if ($server === '' || $port < 1 || $port > 65535) {
         return false;
@@ -108,10 +136,6 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
     $target = (filter_var($server, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false)
         ? sprintf('[%s]:%d', $server, $port)
         : sprintf('%s:%d', $server, $port);
-    $command_type = $is_container ? 'status' : 'auth';
-    $probe = $is_container
-        ? 'FreeRADIUS-Statistics-Type = 1'
-        : 'User-Name = "daloRADIUS-status-probe", User-Password = "daloRADIUS-status-probe"';
     $command = sprintf(
         "printf '%%s\\n' %s | %s -r 1 -t 1 %s %s %s 2>&1",
         escapeshellarg($probe),

@@ -22,6 +22,7 @@ Edit `.env` and replace every `CHANGE_ME_...` value:
 MYSQL_PASSWORD=CHANGE_ME_RADIUS_DB_PASSWORD
 MYSQL_ROOT_PASSWORD=CHANGE_ME_ROOT_DB_PASSWORD
 DEFAULT_CLIENT_SECRET=CHANGE_ME_RADIUS_SHARED_SECRET
+DALORADIUS_STATUS_SECRET=CHANGE_ME_INTERNAL_STATUS_SECRET
 ```
 
 Optional values can be kept as-is for a local setup:
@@ -55,7 +56,7 @@ Check service state:
 docker compose ps
 ```
 
-The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS through a dedicated internal `Status-Server` listener on UDP port `18122`. The official Compose setup creates a client restricted to the web container hostname and does not publish this port to the host. A regular NAS/client entry is still used by the operator **Test User Connectivity** feature; restrict it to the Docker web network and never authorize `0.0.0.0/0`. SSHd is shown as not applicable in the web container.
+The operators' **Reports → RADIUS Server Status** page checks the configured database connection for MariaDB and probes FreeRADIUS through a dedicated internal `Status-Server` listener on UDP port `18122`. The status listener uses a separate `DALORADIUS_STATUS_SECRET`, requires a RADIUS `Message-Authenticator`, is restricted to the Docker network, and is not published to the host. The regular NAS/client secret and port `1812` remain reserved for the operator **Test User Connectivity** feature; restrict that NAS entry to the Docker web network and never authorize `0.0.0.0/0`. SSHd is shown as not applicable in the web container.
 
 Access the web interfaces:
 
@@ -155,7 +156,11 @@ MYSQL_DATABASE=radius
 MYSQL_USER=radius
 MYSQL_PASSWORD=CHANGE_ME_RADIUS_DB_PASSWORD
 DEFAULT_FREERADIUS_SERVER=radius.example.com
+DEFAULT_FREERADIUS_PORT=1812
 DEFAULT_CLIENT_SECRET=CHANGE_ME_RADIUS_SHARED_SECRET
+DALORADIUS_STATUS_SERVER=radius.example.com
+DALORADIUS_STATUS_PORT=18122
+DALORADIUS_STATUS_SECRET=CHANGE_ME_INTERNAL_STATUS_SECRET
 ```
 
 ```bash
@@ -173,4 +178,4 @@ docker run --name daloradius-web \
   -d daloradius-web
 ```
 
-`DEFAULT_CLIENT_SECRET` is only needed by the operators UI connectivity test. The external database must already contain the FreeRADIUS and daloRADIUS schemas; review `contrib/db/migrations/` when connecting a deployment created by an older release.
+`DEFAULT_CLIENT_SECRET` is used by the operators UI connectivity test on the regular authentication listener. `DALORADIUS_STATUS_SECRET` is a separate secret for the internal `Status-Server` listener and must be configured on the external FreeRADIUS server with `Message-Authenticator` enforcement; do not reuse the regular NAS secret. The external database must already contain the FreeRADIUS and daloRADIUS schemas; review `contrib/db/migrations/` when connecting a deployment created by an older release.

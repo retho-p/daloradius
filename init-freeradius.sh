@@ -13,7 +13,13 @@ MYSQL_WAIT_INTERVAL=${MYSQL_WAIT_INTERVAL:-5}
 DEFAULT_CLIENT_SECRET=${DEFAULT_CLIENT_SECRET:-testing123}
 DALORADIUS_STATUS_CLIENT_NETWORK=${DALORADIUS_STATUS_CLIENT_NETWORK:-}
 DALORADIUS_STATUS_PORT=${DALORADIUS_STATUS_PORT:-18122}
+DALORADIUS_STATUS_SECRET=${DALORADIUS_STATUS_SECRET:-}
 FREERADIUS_SQL_TLS=${FREERADIUS_SQL_TLS:-disabled}
+
+if [ "${#DALORADIUS_STATUS_SECRET}" -lt 16 ]; then
+	echo "DALORADIUS_STATUS_SECRET must be set and contain at least 16 characters."
+	exit 1
+fi
 
 MYSQL_DEFAULTS_FILE=""
 
@@ -65,13 +71,29 @@ function configure_daloradius_status_server {
 		container_netmask=$(ifconfig eth0 | awk '/netmask/{ print $4; exit }')
 		client_network=$(ipcalc "$container_ip_address" "$container_netmask" | awk '/Network/{ print $2; exit }')
 	fi
+	case "$client_network" in
+		''|0.0.0.0|0.0.0.0/0|*/0|*[!0-9./]*)
+			echo "DALORADIUS_STATUS_CLIENT_NETWORK must be a restricted IPv4 network (not /0)."
+			exit 1
+			;;
+	esac
+	case "$DALORADIUS_STATUS_PORT" in
+		''|*[!0-9]*)
+			echo "DALORADIUS_STATUS_PORT must be numeric."
+			exit 1
+			;;
+	esac
+	if [ "$DALORADIUS_STATUS_PORT" -lt 1024 ] || [ "$DALORADIUS_STATUS_PORT" -gt 65535 ]; then
+		echo "DALORADIUS_STATUS_PORT must be between 1024 and 65535."
+		exit 1
+	fi
 	if [ -z "$client_network" ]; then
 		echo "Unable to determine the Docker network for the daloRADIUS status client."
 		exit 1
 	fi
 
 	client_network=$(escape_radius_config_value "$client_network")
-	client_secret=$(escape_radius_config_value "$DEFAULT_CLIENT_SECRET")
+	client_secret=$(escape_radius_config_value "$DALORADIUS_STATUS_SECRET")
 	status_tmp=$(mktemp)
 	sed \
 		-e "s|__DALO_STATUS_CLIENT_NETWORK__|$client_network|g" \
