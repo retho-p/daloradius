@@ -141,9 +141,12 @@ function dalo_radius_check_database($db_socket, $config_values) {
     if (is_object($db_socket) && method_exists($db_socket, 'query') && class_exists('DB')) {
         try {
             $result = $db_socket->query('SELECT 1');
-            return !DB::isError($result);
+            if (!DB::isError($result)) {
+                return true;
+            }
         } catch (Throwable $exception) {
-            return false;
+            // The permission check may have disconnected this shared PEAR object.
+            // Continue with a fresh connection instead of reporting a false failure.
         }
     }
 
