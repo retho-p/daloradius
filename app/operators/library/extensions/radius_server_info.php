@@ -132,18 +132,55 @@ function dalo_radius_check_network_radius($config_values, $is_container) {
  */
 function dalo_radius_check_database($db_socket, $config_values) {
     if (is_object($db_socket) && method_exists($db_socket, 'query') && class_exists('DB')) {
-        $result = $db_socket->query('SELECT 1');
-        return !DB::isError($result);
+        try {
+            $result = $db_socket->query('SELECT 1');
+            return !DB::isError($result);
+        } catch (Throwable $exception) {
+            return false;
+        }
+    }
+
+    if (empty($config_values['CONFIG_DB_ENGINE']) ||
+        !isset($config_values['CONFIG_DB_USER'], $config_values['CONFIG_DB_PASS'],
+               $config_values['CONFIG_DB_HOST'], $config_values['CONFIG_DB_PORT'],
+               $config_values['CONFIG_DB_NAME'])) {
+        return false;
+    }
+
+    // The configured Docker and manual-install path uses mysqli. Connect
+    // directly instead of building a PEAR DSN: passwords containing URL
+    // characters can otherwise produce a DB object with no live mysqli link.
+    if (strtolower($config_values['CONFIG_DB_ENGINE']) === 'mysqli' && function_exists('mysqli_init')) {
+        $connection = null;
+        try {
+            mysqli_report(MYSQLI_REPORT_OFF);
+            $connection = mysqli_init();
+            if ($connection === false || !mysqli_real_connect(
+                $connection,
+                $config_values['CONFIG_DB_HOST'],
+                $config_values['CONFIG_DB_USER'],
+                $config_values['CONFIG_DB_PASS'],
+                $config_values['CONFIG_DB_NAME'],
+                intval($config_values['CONFIG_DB_PORT'])
+            )) {
+                return false;
+            }
+
+            $result = mysqli_query($connection, 'SELECT 1');
+            mysqli_close($connection);
+            return $result !== false;
+        } catch (Throwable $exception) {
+            if ($connection instanceof mysqli) {
+                mysqli_close($connection);
+            }
+            return false;
+        }
     }
 
     if (!class_exists('DB')) {
         @include_once('DB.php');
     }
-    if (!class_exists('DB') ||
-        empty($config_values['CONFIG_DB_ENGINE']) ||
-        !isset($config_values['CONFIG_DB_USER'], $config_values['CONFIG_DB_PASS'],
-               $config_values['CONFIG_DB_HOST'], $config_values['CONFIG_DB_PORT'],
-               $config_values['CONFIG_DB_NAME'])) {
+    if (!class_exists('DB')) {
         return false;
     }
 
@@ -156,17 +193,21 @@ function dalo_radius_check_database($db_socket, $config_values) {
         $config_values['CONFIG_DB_PORT'],
         $config_values['CONFIG_DB_NAME']
     );
-    $connection = @DB::connect($dsn);
-    if (DB::isError($connection)) {
+
+    try {
+        $connection = DB::connect($dsn);
+        if (DB::isError($connection)) {
+            return false;
+        }
+
+        $connection->setErrorHandling(PEAR_ERROR_RETURN);
+        $result = $connection->query('SELECT 1');
+        $healthy = !DB::isError($result);
+        $connection->disconnect();
+        return $healthy;
+    } catch (Throwable $exception) {
         return false;
     }
-
-    $connection->setErrorHandling(PEAR_ERROR_RETURN);
-    $result = $connection->query('SELECT 1');
-    $healthy = !DB::isError($result);
-    $connection->disconnect();
-
-    return $healthy;
 }
 
 $is_container = dalo_radius_is_container();
