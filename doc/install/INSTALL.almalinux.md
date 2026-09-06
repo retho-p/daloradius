@@ -173,7 +173,7 @@ Therefore, the presented steps provide a general outline for enabling communicat
 To proceed with the installation of daloRADIUS, install the Apache HTTP Server and the necessary PHP packages:
 
 ```bash
-dnf install -y httpd php php-cli php-mysqlnd php-mbstring php-gd php-xml php-pear php-process \
+dnf install -y httpd php php-cli php-mysqlnd php-mbstring php-gd php-xml php-pear php-process procps-ng \
                git tar unzip wget firewalld policycoreutils-python-utils
 ```
 
