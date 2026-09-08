@@ -18,6 +18,7 @@ APPLY=false
 
 BACKUP_DIR=""
 CONFIG_FILE=""
+LOCK_FILE="/run/lock/daloradius-upgrade.lock"
 CONFIG_BACKUP=""
 CURRENT_COMMIT=""
 TARGET_COMMIT=""
@@ -167,7 +168,7 @@ parse_args() {
 
 require_commands() {
     local command
-    local commands=(git mariadb mariadb-dump php tar sha256sum mktemp realpath stat flock systemctl apachectl freeradius)
+    local commands=(git mariadb mariadb-dump php runuser tar sha256sum mktemp realpath stat flock systemctl apachectl freeradius)
     for command in "${commands[@]}"; do
         command -v "$command" >/dev/null 2>&1 || fail "Required command not found: $command"
     done
@@ -190,6 +191,7 @@ validate_paths() {
 
     [[ -d "$APP_ROOT/.git" ]] || fail "Not a Git checkout: $APP_ROOT"
     [[ -f "$CONFIG_FILE" ]] || fail "Configuration file not found: $CONFIG_FILE"
+    [[ ! -L "$CONFIG_FILE" ]] || fail "Refusing to operate on a symlinked configuration file."
     [[ -f "$APP_ROOT/app/common/includes/daloradius.conf.php.sample" ]] || \
         fail "Configuration sample not found in the checkout."
 
@@ -200,9 +202,61 @@ validate_paths() {
     owner=$(stat -c '%u' -- "$DB_CONFIG")
     mode=$(stat -c '%a' -- "$DB_CONFIG")
     [[ "$owner" == 0 ]] || fail "MariaDB option file must be owned by root."
-    case "$mode" in
-        *[1-7]) fail "MariaDB option file must not be readable by group or other users (mode $mode)." ;;
-    esac
+    if (( 8#$mode & 077 )); then
+        fail "MariaDB option file must not be readable or writable by group or other users (mode $mode)."
+    fi
+}
+
+validate_backup_root() {
+    [[ "$BACKUP_ROOT" = /* ]] || fail "Backup directory must be an absolute path."
+    local parent owner mode
+    parent=$(realpath -e "$(dirname "$BACKUP_ROOT")") || \
+        fail "Backup directory parent does not exist: $(dirname "$BACKUP_ROOT")"
+    owner=$(stat -c '%u' -- "$parent")
+    mode=$(stat -c '%a' -- "$parent")
+    [[ "$owner" == 0 ]] || fail "Backup directory parent must be owned by root."
+    if (( 8#$mode & 022 )); then
+        fail "Backup directory parent must not be group/world writable (mode $mode)."
+    fi
+
+    if [[ -e "$BACKUP_ROOT" ]]; then
+        [[ ! -L "$BACKUP_ROOT" ]] || fail "Refusing to use a symlinked backup directory."
+        owner=$(stat -c '%u' -- "$BACKUP_ROOT")
+        mode=$(stat -c '%a' -- "$BACKUP_ROOT")
+        [[ "$owner" == 0 ]] || fail "Backup directory must be owned by root."
+        if (( 8#$mode & 077 )); then
+            fail "Backup directory must not be readable or writable by group or other users (mode $mode)."
+        fi
+    fi
+}
+
+validate_git_inputs() {
+    [[ "$REMOTE" =~ ^[A-Za-z0-9._-]+$ ]] || fail "Invalid Git remote name: $REMOTE"
+    [[ "$TARGET_REF" =~ ^[A-Za-z0-9._/@:-]+$ ]] || fail "Invalid Git ref: $TARGET_REF"
+    [[ "$TARGET_REF" != -* ]] || fail "Git ref must not start with '-'."
+}
+
+acquire_lock() {
+    local owner mode
+    owner=$(stat -c '%u' -- /run/lock)
+    mode=$(stat -c '%a' -- /run/lock)
+    [[ "$owner" == 0 ]] || fail "/run/lock must be owned by root."
+    if (( (8#$mode & 022) && (8#$mode & 01000) == 0 )); then
+        fail "/run/lock must be non-writable or sticky (mode $mode)."
+    fi
+    if [[ ! -e "$LOCK_FILE" && ! -L "$LOCK_FILE" ]]; then
+        (set -o noclobber; : > "$LOCK_FILE") 2>/dev/null || true
+    fi
+    [[ ! -L "$LOCK_FILE" ]] || fail "Refusing to use a symlinked lock file."
+    [[ -f "$LOCK_FILE" ]] || fail "Unable to create lock file: $LOCK_FILE"
+    owner=$(stat -c '%u' -- "$LOCK_FILE")
+    mode=$(stat -c '%a' -- "$LOCK_FILE")
+    [[ "$owner" == 0 ]] || fail "Lock file must be owned by root."
+    if (( 8#$mode & 077 )); then
+        fail "Lock file must not be readable or writable by group or other users (mode $mode)."
+    fi
+    exec 9>"$LOCK_FILE"
+    flock -n 9 || fail "Another daloRADIUS upgrade is already running."
 }
 
 validate_git_state() {
@@ -232,9 +286,12 @@ validate_database() {
 prepare_backup() {
     local stamp archive dump config_meta
     stamp=$(date -u +%Y%m%dT%H%M%SZ)
+    if [[ ! -e "$BACKUP_ROOT" ]]; then
+        mkdir -m 700 -- "$BACKUP_ROOT"
+    fi
     BACKUP_DIR="$BACKUP_ROOT/$stamp"
     [[ ! -e "$BACKUP_DIR" ]] || fail "Backup directory already exists: $BACKUP_DIR"
-    mkdir -p -- "$BACKUP_DIR"
+    mkdir -m 700 -- "$BACKUP_DIR"
     chmod 700 -- "$BACKUP_DIR"
 
     archive="$BACKUP_DIR/daloradius-files.tar.gz"
@@ -341,7 +398,7 @@ apply_migrations() {
         checksum=$(sha256sum "$tmp" | cut -d' ' -f1)
         quoted=$(sql_quote "$path")
         stored=$(mariadb --defaults-extra-file="$DB_CONFIG" --batch --skip-column-names \
-            --execute="SELECT sha256 FROM daloradius_schema_migrations WHERE filename=$quoted;" 2>/dev/null || true)
+            --execute="SELECT sha256 FROM daloradius_schema_migrations WHERE filename=$quoted;")
 
         if [[ -n "$stored" ]]; then
             [[ "$stored" == "$checksum" ]] || \
@@ -377,15 +434,19 @@ SQL
 
 merge_configuration() {
     local sample tmp config_dir uid gid mode
-    sample=$(mktemp "$BACKUP_DIR/daloradius.conf.sample.XXXXXX.php")
+    config_dir=$(dirname "$CONFIG_FILE")
+    sample=$(mktemp "$config_dir/.daloradius.conf.sample.XXXXXX.php")
     TMP_FILES+=("$sample")
+    chmod 644 -- "$sample"
     git -C "$APP_ROOT" show "$TARGET_COMMIT:app/common/includes/daloradius.conf.php.sample" > "$sample"
 
-    config_dir=$(dirname "$CONFIG_FILE")
+    id www-data >/dev/null 2>&1 || fail "The www-data account is required to merge the PHP configuration."
+    runuser -u www-data -- test -r "$CONFIG_FILE" || \
+        fail "The www-data account cannot read $CONFIG_FILE."
     tmp=$(mktemp "$config_dir/.daloradius.conf.php.XXXXXX")
     TMP_FILES+=("$tmp")
 
-    php -d display_errors=stderr -r '
+    runuser -u www-data -- php -d display_errors=stderr -r '
         $localFile = $argv[1];
         $sampleFile = $argv[2];
         $configValues = [];
@@ -407,6 +468,7 @@ merge_configuration() {
     mode=$(stat -c '%a' -- "$CONFIG_FILE")
     mv -f -- "$tmp" "$CONFIG_FILE"
     chown "$uid:$gid" -- "$CONFIG_FILE"
+    mode=$(printf '%o' $((8#$mode & 0770)))
     chmod "$mode" -- "$CONFIG_FILE"
     CONFIG_UPDATED=true
     log "Merged the current configuration with the target sample."
@@ -461,6 +523,9 @@ main() {
     validate_host
     require_commands
     validate_paths
+    validate_backup_root
+    validate_git_inputs
+    acquire_lock
     validate_git_state
     validate_database
     fetch_target
