@@ -15,6 +15,8 @@ REMOTE="origin"
 TARGET_REF="origin/master"
 BACKUP_ROOT="/root/daloradius-backups"
 APPLY=false
+REF_EXPLICIT=false
+CHECK_EXPLICIT=false
 
 BACKUP_DIR=""
 CONFIG_FILE=""
@@ -25,6 +27,8 @@ TARGET_COMMIT=""
 DB_NAME=""
 CODE_UPDATED=false
 CONFIG_UPDATED=false
+MIGRATIONS_STARTED=false
+APACHE_RESTORE_REQUIRED=false
 ROLLBACK_IN_PROGRESS=false
 TMP_FILES=()
 
@@ -55,13 +59,13 @@ Options:
   --root-dir PATH         daloRADIUS checkout (default: /var/www/daloradius).
   --db-config PATH        MariaDB client option file (default: /root/.my.cnf).
   --remote NAME           Git remote to fetch (default: origin).
-  --ref REF               Git ref or commit to deploy (default: origin/master).
+  --ref REF               Git ref or commit to deploy (default: REMOTE/master).
   --backup-dir PATH       Backup root (default: /root/daloradius-backups).
   -h, --help              Show this help.
 
 The MariaDB option file must contain a [client] section with credentials and
 an explicit database= value. It must be owned by root and not readable by the
- group or other users.
+group or other users.
 
 Examples:
   setup/upgrade.sh --check --db-config /root/daloradius.cnf --ref origin/master
@@ -79,11 +83,21 @@ cleanup() {
 rollback_changes() {
     [[ "$APPLY" == true ]] || return 0
     [[ "$ROLLBACK_IN_PROGRESS" == false ]] || return 0
-    [[ "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true ]] || return 0
+    [[ "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true || \
+       "$MIGRATIONS_STARTED" == true || "$APACHE_RESTORE_REQUIRED" == true ]] || return 0
 
     ROLLBACK_IN_PROGRESS=true
-    trap - ERR
-    warn "The upgrade failed after changing files; restoring the previous application state."
+    trap - ERR INT TERM
+
+    if [[ "$APACHE_RESTORE_REQUIRED" == true && \
+          ( "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true ) ]]; then
+        systemctl stop apache2 >/dev/null 2>&1 || \
+            warn "Could not stop Apache before restoring application files."
+    fi
+
+    if [[ "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true ]]; then
+        warn "The upgrade failed after changing files; restoring the previous application state."
+    fi
 
     if [[ "$CONFIG_UPDATED" == true && -f "$CONFIG_BACKUP" ]]; then
         if cp -p -- "$CONFIG_BACKUP" "$CONFIG_FILE"; then
@@ -101,7 +115,18 @@ rollback_changes() {
         fi
     fi
 
-    warn "The database was not automatically restored. Review $BACKUP_DIR before any manual restore."
+    if [[ "$MIGRATIONS_STARTED" == true ]]; then
+        warn "The database was not automatically restored. Review $BACKUP_DIR before any manual restore."
+    fi
+
+    if [[ "$APACHE_RESTORE_REQUIRED" == true ]]; then
+        if systemctl start apache2; then
+            APACHE_RESTORE_REQUIRED=false
+            log "Restored Apache to its previous active state."
+        else
+            warn "Could not restart Apache; run 'systemctl start apache2' after reviewing the failure."
+        fi
+    fi
 }
 
 on_error() {
@@ -109,12 +134,30 @@ on_error() {
     local line="$1"
     local command="$2"
     warn "Command failed at line $line: $command"
-    rollback_changes || true
     exit "$rc"
 }
 
-trap cleanup EXIT
+on_signal() {
+    local rc=$1
+    local signal=$2
+    warn "Received $signal; aborting the upgrade."
+    exit "$rc"
+}
+
+on_exit() {
+    local rc=$?
+    trap - EXIT ERR INT TERM
+    if ((rc != 0)); then
+        rollback_changes || true
+    fi
+    cleanup
+    exit "$rc"
+}
+
+trap on_exit EXIT
 trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
+trap 'on_signal 130 INT' INT
+trap 'on_signal 143 TERM' TERM
 
 require_argument() {
     [[ $# -ge 2 && -n "$2" ]] || fail "Missing argument for $1."
@@ -124,6 +167,8 @@ parse_args() {
     while (($#)); do
         case "$1" in
             --apply)
+                [[ "$CHECK_EXPLICIT" == false ]] || \
+                    fail "--apply and --check cannot be used together."
                 APPLY=true
                 shift
                 ;;
@@ -145,6 +190,7 @@ parse_args() {
             --ref)
                 require_argument "$@"
                 TARGET_REF=$2
+                REF_EXPLICIT=true
                 shift 2
                 ;;
             --backup-dir)
@@ -157,6 +203,9 @@ parse_args() {
                 exit 0
                 ;;
             --check)
+                [[ "$APPLY" == false ]] || \
+                    fail "--apply and --check cannot be used together."
+                CHECK_EXPLICIT=true
                 shift
                 ;;
             *)
@@ -164,12 +213,15 @@ parse_args() {
                 ;;
         esac
     done
+
+    if [[ "$REF_EXPLICIT" == false ]]; then
+        TARGET_REF="$REMOTE/master"
+    fi
 }
 
 require_commands() {
     local command
-    local commands=(git mariadb mariadb-dump php runuser tar sha256sum mktemp realpath stat flock systemctl apachectl freeradius)
-    for command in "${commands[@]}"; do
+    for command in "$@"; do
         command -v "$command" >/dev/null 2>&1 || fail "Required command not found: $command"
     done
 }
@@ -210,8 +262,14 @@ validate_paths() {
 validate_backup_root() {
     [[ "$BACKUP_ROOT" = /* ]] || fail "Backup directory must be an absolute path."
     local parent owner mode
+    [[ ! -L "$BACKUP_ROOT" ]] || fail "Refusing to use a symlinked backup directory."
     parent=$(realpath -e "$(dirname "$BACKUP_ROOT")") || \
         fail "Backup directory parent does not exist: $(dirname "$BACKUP_ROOT")"
+    [[ -d "$parent" ]] || fail "Backup directory parent is not a directory: $parent"
+    BACKUP_ROOT=$(realpath -m -- "$parent/$(basename "$BACKUP_ROOT")")
+    [[ "$BACKUP_ROOT" != / ]] || fail "Backup directory must not be the filesystem root."
+    [[ "$BACKUP_ROOT" != "$APP_ROOT" && "$BACKUP_ROOT" != "$APP_ROOT/"* ]] || \
+        fail "Backup directory must be outside the daloRADIUS application root."
     owner=$(stat -c '%u' -- "$parent")
     mode=$(stat -c '%a' -- "$parent")
     [[ "$owner" == 0 ]] || fail "Backup directory parent must be owned by root."
@@ -220,7 +278,7 @@ validate_backup_root() {
     fi
 
     if [[ -e "$BACKUP_ROOT" ]]; then
-        [[ ! -L "$BACKUP_ROOT" ]] || fail "Refusing to use a symlinked backup directory."
+        [[ -d "$BACKUP_ROOT" ]] || fail "Backup path is not a directory: $BACKUP_ROOT"
         owner=$(stat -c '%u' -- "$BACKUP_ROOT")
         mode=$(stat -c '%a' -- "$BACKUP_ROOT")
         [[ "$owner" == 0 ]] || fail "Backup directory must be owned by root."
@@ -284,7 +342,7 @@ validate_database() {
 }
 
 prepare_backup() {
-    local stamp archive dump config_meta
+    local stamp archive dump config_meta app_name
     stamp=$(date -u +%Y%m%dT%H%M%SZ)
     if [[ ! -e "$BACKUP_ROOT" ]]; then
         mkdir -m 700 -- "$BACKUP_ROOT"
@@ -295,8 +353,10 @@ prepare_backup() {
     chmod 700 -- "$BACKUP_DIR"
 
     archive="$BACKUP_DIR/daloradius-files.tar.gz"
+    app_name=$(basename "$APP_ROOT")
     log "Creating application backup: $archive"
-    tar -C "$(dirname "$APP_ROOT")" -czf "$archive" "$(basename "$APP_ROOT")"
+    tar -C "$(dirname "$APP_ROOT")" --exclude="$app_name/.git" \
+        -czf "$archive" "$app_name"
     [[ -s "$archive" ]] || fail "Application backup is empty."
     tar -tzf "$archive" >/dev/null || fail "Application backup could not be read back."
 
@@ -334,6 +394,9 @@ fetch_target() {
     git -C "$APP_ROOT" fetch --tags --prune "$REMOTE"
     TARGET_COMMIT=$(git -C "$APP_ROOT" rev-parse --verify "$TARGET_REF^{commit}") || \
         fail "Git ref does not resolve to a commit: $TARGET_REF"
+    git -C "$APP_ROOT" cat-file -e \
+        "$TARGET_COMMIT:app/common/includes/daloradius.conf.php.sample" || \
+        fail "Target revision does not contain the daloRADIUS configuration sample."
 
     [[ "$CURRENT_COMMIT" == "$TARGET_COMMIT" ]] && {
         log "The checkout is already at $TARGET_COMMIT."
@@ -375,26 +438,19 @@ show_plan() {
     fi
 }
 
-MIGRATION_TMP=""
-
-write_target_migration() {
-    local path=$1
-    [[ "$path" =~ ^contrib/db/migrations/[A-Za-z0-9._-]+\.sql$ ]] || \
-        fail "Unexpected migration path: $path"
-    MIGRATION_TMP=$(mktemp "$BACKUP_DIR/migration.XXXXXX.sql")
-    TMP_FILES+=("$MIGRATION_TMP")
-    git -C "$APP_ROOT" show "$TARGET_COMMIT:$path" > "$MIGRATION_TMP"
-    [[ -s "$MIGRATION_TMP" ]] || fail "Migration is empty: $path"
-}
-
 apply_migrations() {
-    local migration path tmp quoted stored checksum
-    local migrations
-    migrations=$(migration_list) || fail "Could not enumerate database migrations."
+    local migrations=$1
+    local path tmp quoted stored checksum
+    tmp=$(mktemp "$BACKUP_DIR/migration.XXXXXX.sql")
+    TMP_FILES+=("$tmp")
+
     while IFS= read -r path; do
         [[ -n "$path" ]] || continue
-        write_target_migration "$path"
-        tmp=$MIGRATION_TMP
+        [[ "$path" =~ ^contrib/db/migrations/[A-Za-z0-9._-]+\.sql$ ]] || \
+            fail "Unexpected migration path: $path"
+        git -C "$APP_ROOT" show "$TARGET_COMMIT:$path" > "$tmp"
+        [[ -s "$tmp" ]] || fail "Migration is empty: $path"
+
         checksum=$(sha256sum "$tmp" | cut -d' ' -f1)
         quoted=$(sql_quote "$path")
         stored=$(mariadb --defaults-extra-file="$DB_CONFIG" --batch --skip-column-names \
@@ -414,13 +470,14 @@ apply_migrations() {
 }
 
 run_migrations() {
-    local migration_count
-    migration_count=$(migration_list | sed '/^$/d' | wc -l)
-    [[ "$migration_count" -eq 0 ]] && {
-        log "No new database migration files detected."
+    local migrations
+    migrations=$(migration_list) || fail "Could not enumerate database migrations."
+    if [[ -z "$migrations" ]]; then
+        log "No database migration files detected."
         return
-    }
+    fi
 
+    MIGRATIONS_STARTED=true
     log "Preparing migration ledger."
     mariadb --defaults-extra-file="$DB_CONFIG" <<'SQL'
 CREATE TABLE IF NOT EXISTS daloradius_schema_migrations (
@@ -429,7 +486,7 @@ CREATE TABLE IF NOT EXISTS daloradius_schema_migrations (
     applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 SQL
-    apply_migrations
+    apply_migrations "$migrations"
 }
 
 merge_configuration() {
@@ -467,17 +524,15 @@ merge_configuration() {
     gid=$(stat -c '%g' -- "$CONFIG_FILE")
     mode=$(stat -c '%a' -- "$CONFIG_FILE")
     mv -f -- "$tmp" "$CONFIG_FILE"
+    CONFIG_UPDATED=true
     chown "$uid:$gid" -- "$CONFIG_FILE"
     mode=$(printf '%o' $((8#$mode & 0770)))
     chmod "$mode" -- "$CONFIG_FILE"
-    CONFIG_UPDATED=true
     log "Merged the current configuration with the target sample."
 }
 
 validate_services() {
     local apache_was_active=$1
-    apachectl configtest >/dev/null
-    freeradius -XC >/dev/null
     systemctl is-active --quiet freeradius || fail "FreeRADIUS is not active after the upgrade."
     if [[ "$apache_was_active" == true ]]; then
         systemctl is-active --quiet apache2 || fail "Apache is not active after the upgrade."
@@ -495,12 +550,15 @@ apply_upgrade() {
     systemctl is-active --quiet freeradius || fail "FreeRADIUS must be active before applying the upgrade."
 
     prepare_backup
-    systemctl stop apache2 2>/dev/null || [[ "$apache_was_active" == false ]]
+    if [[ "$apache_was_active" == true ]]; then
+        APACHE_RESTORE_REQUIRED=true
+        systemctl stop apache2
+    fi
 
     run_migrations
 
-    git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null
     CODE_UPDATED=true
+    git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null
     merge_configuration
 
     apachectl configtest >/dev/null
@@ -511,8 +569,10 @@ apply_upgrade() {
     fi
     validate_services "$apache_was_active"
 
+    APACHE_RESTORE_REQUIRED=false
     CODE_UPDATED=false
     CONFIG_UPDATED=false
+    MIGRATIONS_STARTED=false
     log "Upgrade completed successfully."
     log "Application revision: $TARGET_COMMIT"
     log "Backup retained at: $BACKUP_DIR"
@@ -521,7 +581,10 @@ apply_upgrade() {
 main() {
     parse_args "$@"
     validate_host
-    require_commands
+    require_commands git mariadb realpath stat flock sort
+    if [[ "$APPLY" == true ]]; then
+        require_commands mariadb-dump php runuser tar sha256sum mktemp systemctl apachectl freeradius
+    fi
     validate_paths
     validate_backup_root
     validate_git_inputs
