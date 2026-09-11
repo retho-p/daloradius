@@ -127,6 +127,8 @@ session_write_close();
             assert 'Open-session maintenance' in html and 'Close sessions' in html and 'Delete records' in html
             assert 'Delete accounting history (all records)' in html
             html, confirm = preview(value=odd)
+            if os.environ.get('MAINTENANCE_PREVIEW_HTML'):
+                Path(os.environ['MAINTENANCE_PREVIEW_HTML']).write_text(html)
             assert confirm, 'Missing preview: ' + ('empty' if 'No matching open records' in html else 'error' if 'Cannot read accounting records' in html else 'invalid')
             response = request(confirm)[1]
             assert '1 actually affected' in response, 'Confirmation result: ' + re.findall(r'<div class="alert alert-info" role="status">(.*?)</div>', response).__repr__()

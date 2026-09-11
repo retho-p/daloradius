@@ -172,9 +172,21 @@ const invalidateMaintenancePreview = () => {
     const preview = document.getElementById('maintenance-preview');
     if (preview) preview.remove();
 };
+// Autofill/form restoration can emit input/change without changing the
+// approved filter (including in the inactive action's form). Compare values,
+// not event occurrence, so those notifications cannot erase a valid preview.
+const confirmation = document.getElementById('maintenance-confirm');
+const approvedAction = confirmation.elements.namedItem('action').value;
 document.querySelectorAll('.maintenance-filter').forEach(form => {
-    form.addEventListener('input', invalidateMaintenancePreview);
-    form.addEventListener('change', invalidateMaintenancePreview);
+    if (form.elements.namedItem('action').value !== approvedAction) return;
+    const invalidateChangedFilter = () => {
+        if (['scope', 'value'].some(name =>
+            form.elements.namedItem(name).value !== confirmation.elements.namedItem(name).value)) {
+            invalidateMaintenancePreview();
+        }
+    };
+    form.addEventListener('input', invalidateChangedFilter);
+    form.addEventListener('change', invalidateChangedFilter);
 });
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
     tab.addEventListener('show.bs.tab', invalidateMaintenancePreview);
