@@ -2,100 +2,82 @@
 
 ## release 2.4-wip
 
-### User portal, billing, and notifications
+### Fixed
 
-- [#697](https://github.com/lirantal/daloradius/pull/697) - Fixes Users Portal profile updates so they apply to the logged-in account.
-- [#698](https://github.com/lirantal/daloradius/pull/698) - Validates invoice IDs before processing invoice notifications.
-- [#699](https://github.com/lirantal/daloradius/pull/699) - Removes PHP 8 deprecations and warning notices from invoice helpers.
-- [#700](https://github.com/lirantal/daloradius/pull/700) - Removes the obsolete Users Portal `retUserInfo` AJAX helper.
-- [#737](https://github.com/lirantal/daloradius/pull/737) - Fixes session-time and traffic refill actions, including plan IDs, costs, and billing database access.
-- [#741](https://github.com/lirantal/daloradius/pull/741) - Uses caller-independent common include paths for user billing.
-- [#773](https://github.com/lirantal/daloradius/pull/773) - Reworks PDF notifications around a shared renderer and dispatcher, fixes preview, download, email, currency, and recipient handling, modernizes templates, removes obsolete scripts, and blocks direct web access to notification directories.
-- [#775](https://github.com/lirantal/daloradius/pull/775) - Hashes Users Portal passwords, upgrades legacy plaintext passwords on login, and adds migration and command-line upgrade tools.
-
-### Operator management and security
-
-- [#709](https://github.com/lirantal/daloradius/pull/709) - Adds TOTP multi-factor authentication for operators, including QR setup, recovery codes, migration support, and recovery documentation.
-- [#710](https://github.com/lirantal/daloradius/pull/710) - Hardens operator authentication, restores heartbeat-dashboard ACL checks, refreshes operator and ACL seed data, and adds IP-pool name filtering.
-- [#711](https://github.com/lirantal/daloradius/pull/711) - Adds a migration to expand the operator password column to `VARCHAR(95)`.
-- [#712](https://github.com/lirantal/daloradius/pull/712) - Fixes the operator management form so the operator list appears in the username field.
-- [#714](https://github.com/lirantal/daloradius/pull/714) - Shows assigned `Framed-IP-Address` values in the main user list.
-- [#713](https://github.com/lirantal/daloradius/pull/713) - Fixes duplicate ACL file entries when creating operators.
-- [#716](https://github.com/lirantal/daloradius/pull/716) - Adds SHA-256 support for `SHA2-Password` attributes.
-- [#738](https://github.com/lirantal/daloradius/pull/738) - Uses per-password salted SHA-512 for new `Crypt-Password` hashes while retaining safe verification compatibility with legacy DES hashes.
-- [#755](https://github.com/lirantal/daloradius/pull/755) - Applies `CONFIG_DB_PASSWORD_ENCRYPTION` filtering consistently to `Cleartext-Password` and `User-Password` across selectors, user creation and import, group checks, and AJAX requests; corrects export handling for both attributes and fixes related labels and include paths.
-- [#756](https://github.com/lirantal/daloradius/pull/756) - Rotates sessions after successful operator and user authentication.
-- [#760](https://github.com/lirantal/daloradius/pull/760) - Migrates user actions to CSRF-protected JSON requests.
-- [#762](https://github.com/lirantal/daloradius/pull/762) - Migrates dynamic-attribute requests from SACK to JSON, improves validation, and rolls back incomplete invoices.
-- [#766](https://github.com/lirantal/daloradius/pull/766) - Secures hotspot map data embedded in JavaScript, replaces the API-key basemap, and updates Leaflet to 1.9.4.
-- [#771](https://github.com/lirantal/daloradius/pull/771) - Uses cryptographically secure random values when generating passwords.
-
-### NAS, accounting, and RADIUS operations
-
-- [#707](https://github.com/lirantal/daloradius/pull/707) - Improves IP-pool management with portable includes, accounting tooltips, expiry-time badges, username information actions, and clearer empty-value rendering.
-- [#718](https://github.com/lirantal/daloradius/pull/718) - Enables SQL-backed session tracking for `Simultaneous-Use` and safely updates FreeRADIUS configuration files.
-- [#724](https://github.com/lirantal/daloradius/pull/724) - Improves NAS validation and multi-select deletion, hides secrets in listings, and uses a dedicated configurable CoA/PoD port instead of the NAS `ports` field.
-- [#731](https://github.com/lirantal/daloradius/pull/731) - Prefills the disconnect-user form from online-user rows, validates custom attributes, and carries NAS identity through disconnect requests.
-- [#739](https://github.com/lirantal/daloradius/pull/739) - Adds versioned JSON NAS import and export with previews, duplicate and existing-name handling, secret masking, and binary-safe encoding.
-- [#740](https://github.com/lirantal/daloradius/pull/740) - Improves OpenWrt heartbeat reporting by detecting active Wi-Fi sections and interfaces and encoding parameters safely.
-- [#757](https://github.com/lirantal/daloradius/pull/757) - Batches user-group lookups in operator listings.
-- [#758](https://github.com/lirantal/daloradius/pull/758) - Optimizes user-group count queries while keeping pagination results consistent.
-- [#776](https://github.com/lirantal/daloradius/pull/776) - Adds scoped maintenance for closing or deleting open accounting sessions, with 100-row previews, revalidation, and 10-minute single-use confirmations.
-
-### Installation, Docker, and platform
-
-- [#717](https://github.com/lirantal/daloradius/pull/717) - Detects unsupported LXC service namespaces in the installer and documents Proxmox LXC requirements, including nesting support or use of a VM.
-- [#725](https://github.com/lirantal/daloradius/pull/725) - Adds missing database table settings, validates table names strictly, normalizes database engine names, and replaces `.local` examples with reserved `example.org` addresses.
-- [#730](https://github.com/lirantal/daloradius/pull/730) - Makes the installer enforce `freerad:freerad` ownership for SQL and sqlcounter modules and the default site, including enabled symlinks.
-- [#736](https://github.com/lirantal/daloradius/pull/736) - Improves installer messages for schema-loading failures.
-- [#750](https://github.com/lirantal/daloradius/pull/750) - Removes the obsolete PHP 7 standalone Docker setup and updates Docker guidance to use the primary image.
-- [#761](https://github.com/lirantal/daloradius/pull/761) - Removes the unused PHP ZIP dependency from Docker and installation documentation.
-- [#774](https://github.com/lirantal/daloradius/pull/774) - Removes the Services Status page and helper; service availability should be handled by external monitoring.
-
-### Database and dependency maintenance
-
-- [#701](https://github.com/lirantal/daloradius/pull/701) - Removes a duplicated vendored jpgraph subtree.
-- [#719](https://github.com/lirantal/daloradius/pull/719) - Updates the bundled PHPMailer library to 6.12.0.
-- [#722](https://github.com/lirantal/daloradius/pull/722) - Optimizes and separates dictionary seed data, supports additional FreeRADIUS type syntax, and updates seed-loading documentation.
-- [#745](https://github.com/lirantal/daloradius/pull/745) - Updates the bundled dompdf library to 3.1.6.
-- [#752](https://github.com/lirantal/daloradius/pull/752) - Updates Bootstrap to 5.3.8 and Bootstrap Icons to 1.13.1.
-- [#770](https://github.com/lirantal/daloradius/pull/770) - Replaces the last `datediff()` call with `DateTime::diff()` and removes unused legacy PHP helpers, sidebar code, dictionary-import code, dead blocks, and obsolete documentation comments.
-
-### UI, reports, graphs, and JavaScript
-
-- [#702](https://github.com/lirantal/daloradius/pull/702) - Replaces removed PHP `split()` calls in RAID and UPS reports and executes `apcaccess` directly for UPS status.
-- [#705](https://github.com/lirantal/daloradius/pull/705) - Improves responsive navigation, dashboard layouts, tables, and mobile and tablet usability.
-- [#723](https://github.com/lirantal/daloradius/pull/723) - Aligns user-list and search actions, including conditional mail controls and framed-IP accounting links.
-- [#721](https://github.com/lirantal/daloradius/pull/721) - Fixes user-report accordion state handling and removes the duplicate operator `Apply` button.
-- [#746](https://github.com/lirantal/daloradius/pull/746) - Removes unused legacy Users Portal JavaScript libraries.
-- [#748](https://github.com/lirantal/daloradius/pull/748) - Replaces jpgraph with vendored Chart.js for application graphs and preserves graph totals and time buckets.
-- [#754](https://github.com/lirantal/daloradius/pull/754) - Modernizes shared JavaScript helpers, uses Web Crypto for random strings, dispatches `input` and `change` events after updates, and fixes syntax, DOM, scope, and visibility edge cases.
-- [#759](https://github.com/lirantal/daloradius/pull/759) - Migrates read-only information requests to JSON with structured database-error responses.
+- [#697](https://github.com/lirantal/daloradius/pull/697) - Updates the logged-in user's profile correctly.
+- [#698](https://github.com/lirantal/daloradius/pull/698) - Validates invoice notification IDs.
+- [#699](https://github.com/lirantal/daloradius/pull/699) - Removes PHP 8 invoice warnings.
+- [#702](https://github.com/lirantal/daloradius/pull/702) - Fixes RAID and UPS status reports on modern PHP.
+- [#710](https://github.com/lirantal/daloradius/pull/710) - Hardens operator authentication and heartbeat ACL checks.
+- [#712](https://github.com/lirantal/daloradius/pull/712) - Restores operator username suggestions.
+- [#713](https://github.com/lirantal/daloradius/pull/713) - Prevents duplicate operator ACL entries.
+- [#717](https://github.com/lirantal/daloradius/pull/717) - Handles unsupported LXC service namespaces.
+- [#721](https://github.com/lirantal/daloradius/pull/721) - Fixes report accordions and duplicate controls.
+- [#723](https://github.com/lirantal/daloradius/pull/723) - Fixes user-list actions and accounting links.
+- [#724](https://github.com/lirantal/daloradius/pull/724) - Fixes NAS validation, deletion, secrets, and CoA ports.
+- [#725](https://github.com/lirantal/daloradius/pull/725) - Fixes database table settings and engine validation.
+- [#730](https://github.com/lirantal/daloradius/pull/730) - Enforces FreeRADIUS file ownership during installation.
+- [#736](https://github.com/lirantal/daloradius/pull/736) - Improves schema-loading error messages.
+- [#737](https://github.com/lirantal/daloradius/pull/737) - Fixes billing refill actions.
+- [#738](https://github.com/lirantal/daloradius/pull/738) - Uses secure salted `Crypt-Password` hashes.
+- [#740](https://github.com/lirantal/daloradius/pull/740) - Fixes OpenWrt heartbeat detection.
+- [#755](https://github.com/lirantal/daloradius/pull/755) - Fixes cleartext-password filtering and exports.
+- [#756](https://github.com/lirantal/daloradius/pull/756) - Rotates sessions after authentication.
 - [#763](https://github.com/lirantal/daloradius/pull/763) - Adds the missing Chart.js source map.
-- [#768](https://github.com/lirantal/daloradius/pull/768) - Improves report columns and NAS tooltips, adds bulk Clear Sessions, standardizes report date ranges and placeholders, and removes duplicate or orphaned report code with an upgrade migration.
-- [#777](https://github.com/lirantal/daloradius/pull/777) - Hardens missing-token CSRF handling and improves translated history metadata, RADIUS reply badges, date/time and IP-pool rendering, default sorting, and dashboard navigation.
-- [#781](https://github.com/lirantal/daloradius/pull/781) - Fixes the new-attribute success link and preserves escaped edit-link values.
+- [#765](https://github.com/lirantal/daloradius/pull/765) - Adds translation fallback and completes Italian translations.
+- [#766](https://github.com/lirantal/daloradius/pull/766) - Secures and updates hotspot maps.
+- [#768](https://github.com/lirantal/daloradius/pull/768) - Fixes reports, session clearing, and related migrations.
+- [#771](https://github.com/lirantal/daloradius/pull/771) - Uses secure random password generation.
+- [#773](https://github.com/lirantal/daloradius/pull/773) - Fixes PDF notification workflows and access controls.
+- [#777](https://github.com/lirantal/daloradius/pull/777) - Fixes CSRF handling, rendering, translations, and sorting.
+- [#781](https://github.com/lirantal/daloradius/pull/781) - Fixes new-attribute success links.
 
-### Import/export and data workflows
+### Changes
 
-- [#742](https://github.com/lirantal/daloradius/pull/742) - Optionally generates eight-character passwords for empty CSV import fields and provides a session-bound, one-time generated-credentials download that expires after five minutes.
+- [#700](https://github.com/lirantal/daloradius/pull/700) - Removes the legacy Users Portal AJAX helper.
+- [#701](https://github.com/lirantal/daloradius/pull/701) - Removes the duplicated jpgraph subtree.
+- [#707](https://github.com/lirantal/daloradius/pull/707) - Improves IP-pool management and rendering.
+- [#711](https://github.com/lirantal/daloradius/pull/711) - Expands the operator password column.
+- [a0515e0](https://github.com/lirantal/daloradius/commit/a0515e0a1ae108df21127546d3b032817be26d26) - Standardizes contribution guidance.
+- [#715](https://github.com/lirantal/daloradius/pull/715) - Documents expiration reply messages.
+- [#719](https://github.com/lirantal/daloradius/pull/719) - Updates PHPMailer to 6.12.0.
+- [#722](https://github.com/lirantal/daloradius/pull/722) - Optimizes dictionary seed data.
+- [162ef15](https://github.com/lirantal/daloradius/commit/162ef15626ef831acdf8132c8d85236037f5e71c) - Updates the installation guide link.
+- [04abe18](https://github.com/lirantal/daloradius/commit/04abe18f4221e9ca9389b6bf7de9ece0cafe31c0) - Clarifies database installation and migration guidance.
+- [6d4131a](https://github.com/lirantal/daloradius/commit/6d4131acc99f9cb2aa4c7afcb04302408adc3be8) - Standardizes the security policy.
+- [#741](https://github.com/lirantal/daloradius/pull/741) - Standardizes user-billing include paths.
+- [#745](https://github.com/lirantal/daloradius/pull/745) - Updates dompdf to 3.1.6.
+- [#746](https://github.com/lirantal/daloradius/pull/746) - Removes unused Users Portal JavaScript.
+- [#744](https://github.com/lirantal/daloradius/pull/744) - Removes duplicate translation keys.
+- [#750](https://github.com/lirantal/daloradius/pull/750) - Removes the obsolete standalone Docker setup.
+- [#748](https://github.com/lirantal/daloradius/pull/748) - Replaces jpgraph with Chart.js.
+- [#751](https://github.com/lirantal/daloradius/pull/751) - Documents FreeRADIUS certificate management.
+- [#752](https://github.com/lirantal/daloradius/pull/752) - Updates Bootstrap and Bootstrap Icons.
+- [#754](https://github.com/lirantal/daloradius/pull/754) - Modernizes shared JavaScript helpers.
+- [#757](https://github.com/lirantal/daloradius/pull/757) - Batches user-group lookups.
+- [#758](https://github.com/lirantal/daloradius/pull/758) - Optimizes user-group count queries.
+- [#759](https://github.com/lirantal/daloradius/pull/759) - Migrates read-only AJAX requests to JSON.
+- [#760](https://github.com/lirantal/daloradius/pull/760) - Migrates user actions to CSRF-protected JSON.
+- [#761](https://github.com/lirantal/daloradius/pull/761) - Removes the unused PHP ZIP dependency.
+- [#762](https://github.com/lirantal/daloradius/pull/762) - Migrates dynamic attributes to JSON and removes SACK.
+- [#770](https://github.com/lirantal/daloradius/pull/770) - Removes unused legacy PHP code.
+- [#772](https://github.com/lirantal/daloradius/pull/772) - Removes obsolete installation guides.
+- [#774](https://github.com/lirantal/daloradius/pull/774) - Removes the Services Status page.
 
-### Internationalization
+### Features
 
-- [#744](https://github.com/lirantal/daloradius/pull/744) - Removes dead duplicate assignments from language packs without changing rendered translations.
-- [#749](https://github.com/lirantal/daloradius/pull/749) - Makes operator sidebar and dashboard strings translatable.
-- [#743](https://github.com/lirantal/daloradius/pull/743) - Adds a complete Traditional Chinese language pack for the operator and user portals.
-- [#765](https://github.com/lirantal/daloradius/pull/765) - Adds English fallback handling for missing or empty translations, brings Italian to full key parity, localizes hardcoded labels, and cleans up language-pack markup.
-
-### Documentation and project maintenance
-
-- [a0515e0](https://github.com/lirantal/daloradius/commit/a0515e0a1ae108df21127546d3b032817be26d26) - Standardizes contributor and agent guidance.
-- [#715](https://github.com/lirantal/daloradius/pull/715) - Adds documentation explaining expiration reply messages.
-- [162ef15](https://github.com/lirantal/daloradius/commit/162ef15626ef831acdf8132c8d85236037f5e71c) - Updates the installation guide link in the README.
-- [04abe18](https://github.com/lirantal/daloradius/commit/04abe18f4221e9ca9389b6bf7de9ece0cafe31c0) - Clarifies schema selection for new installations and migration plus upgrade-note instructions for existing installations.
-- [6d4131a](https://github.com/lirantal/daloradius/commit/6d4131acc99f9cb2aa4c7afcb04302408adc3be8) - Standardizes `SECURITY.md`.
-- [#751](https://github.com/lirantal/daloradius/pull/751) - Adds a FreeRADIUS certificate management and setup guide.
-- [#772](https://github.com/lirantal/daloradius/pull/772) - Removes obsolete installation and read-only JSON migration guides.
+- [#705](https://github.com/lirantal/daloradius/pull/705) - Adds responsive layouts.
+- [#709](https://github.com/lirantal/daloradius/pull/709) - Adds operator TOTP multi-factor authentication.
+- [#714](https://github.com/lirantal/daloradius/pull/714) - Shows framed IP addresses in user lists.
+- [#716](https://github.com/lirantal/daloradius/pull/716) - Adds `SHA2-Password` support.
+- [#718](https://github.com/lirantal/daloradius/pull/718) - Adds SQL-backed simultaneous-use tracking.
+- [#731](https://github.com/lirantal/daloradius/pull/731) - Adds disconnect-user form autofill.
+- [#739](https://github.com/lirantal/daloradius/pull/739) - Adds NAS JSON import and export.
+- [#742](https://github.com/lirantal/daloradius/pull/742) - Adds password generation during user import.
+- [#743](https://github.com/lirantal/daloradius/pull/743) - Adds Traditional Chinese translations.
+- [#749](https://github.com/lirantal/daloradius/pull/749) - Makes sidebar and dashboard text translatable.
+- [#775](https://github.com/lirantal/daloradius/pull/775) - Adds hashed Users Portal passwords.
+- [#776](https://github.com/lirantal/daloradius/pull/776) - Adds open-session maintenance.
 
 ## release 2.3 - 22 May 2026
 
