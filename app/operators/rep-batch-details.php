@@ -25,6 +25,7 @@
     $operator = $_SESSION['operator_user'];
 
     include('../common/includes/config_read.php');
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     include('library/check_operator_perm.php');
     
     include_once("lang/main.php");
@@ -33,11 +34,13 @@
     include_once("include/management/functions.php");
 
     // validate this parameter before including menu
-    $batch_name = (array_key_exists('batch_name', $_GET) && !empty(str_replace("%", "", trim($_GET['batch_name']))))
+    $batch_name = (array_key_exists('batch_name', $_GET) && is_string($_GET['batch_name']) &&
+                   !empty(str_replace("%", "", trim($_GET['batch_name']))))
                 ? str_replace("%", "", trim($_GET['batch_name'])) : "";
     $batch_name_enc = (!empty($batch_name)) ? htmlspecialchars($batch_name, ENT_QUOTES, 'UTF-8') : "";
 
-    $username = (array_key_exists('username', $_GET) && !empty(str_replace("%", "", trim($_GET['username']))))
+    $username = (array_key_exists('username', $_GET) && is_string($_GET['username']) &&
+                 !empty(str_replace("%", "", trim($_GET['username']))))
               ? str_replace("%", "", trim($_GET['username'])) : "";
     $username_enc = (!empty($username)) ? htmlspecialchars($username, ENT_QUOTES, 'UTF-8') : "";
 
@@ -124,6 +127,15 @@
     if ($batch_id > 0) {
 
         $_SESSION['reportParams']['batch_id'] = $batch_id;
+        $_SESSION['reportType'] = "reportsBatchActiveUsers";
+        $_SESSION['reportExport'] = array(
+            'source' => 'rep-batch-details',
+            'type' => 'reportsBatchActiveUsers',
+            'filters' => array(
+                'batch_id' => $batch_id,
+                'username' => $username,
+            ),
+        );
 
         $sql = "SELECT bh.id, bh.batch_name, bh.batch_description, bh.batch_status, COUNT(DISTINCT(ubi.id)) AS total_users,
                        COUNT(DISTINCT(ra.username)) AS active_users, ubi.planname, bp.plancost, bp.plancurrency,
@@ -234,12 +246,6 @@
 
         print_table_bottom();
 
-        // setup php session variables for exporting
-        $_SESSION['reportTable'] = "";
-        //reportQuery is assigned below to the SQL statement  in $sql
-        $_SESSION['reportQuery'] = "";
-        $_SESSION['reportType'] = "reportsBatchActiveUsers";
-
         // the partial query is built starting from user input
         // and for being passed to setupNumbering and setupLinks functions
         $partial_query_params = array( sprintf('batch_name=%s', urlencode($batch_name_enc)) );
@@ -260,9 +266,6 @@
                              $configValues['CONFIG_DB_TBL_RADACCT'],
                              $configValues['CONFIG_DB_TBL_DALOBATCHHISTORY'],
                              implode(" AND ", $sql_WHERE));
-
-        // assigning the session reportQuery
-        $_SESSION['reportQuery'] = $sql;
 
         $res = $dbSocket->query($sql);
         $numrows = $res->numRows();

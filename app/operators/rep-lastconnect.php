@@ -30,6 +30,8 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'validation.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'layout.php' ]);
 
+    unset($_SESSION['reportExport']);
+
     // setting table-related parameters first
     switch($configValues['FREERADIUS_VERSION']) {
     case '1':
@@ -143,19 +145,30 @@
         $sql_WHERE[] = sprintf("pa.reply='%s'", $dbSocket->escapeSimple($radiusReply));
     }
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = sprintf("%s AS pa LEFT JOIN %s AS ui ON pa.%s = ui.username",
-                                       $configValues['CONFIG_DB_TBL_RADPOSTAUTH'],
-                                       $configValues['CONFIG_DB_TBL_DALOUSERINFO'],
-                                       $tableSetting['postauth']['user']);
-    $_SESSION['reportQuery'] = " WHERE " . implode(" AND ", $sql_WHERE);
-    $_SESSION['reportType'] = "reportsLastConnectionAttempts";
+    // setup local PEAR-query variables and the structured export descriptor
+    $reportTable = sprintf("%s AS pa LEFT JOIN %s AS ui ON pa.%s = ui.username",
+                          $configValues['CONFIG_DB_TBL_RADPOSTAUTH'],
+                          $configValues['CONFIG_DB_TBL_DALOUSERINFO'],
+                          $tableSetting['postauth']['user']);
+    $reportQuery = " WHERE " . implode(" AND ", $sql_WHERE);
 
+    $_SESSION['reportExport'] = array(
+        'source' => 'rep-lastconnect',
+        'type' => 'reportsLastConnectionAttempts',
+        'filters' => array(
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'radiusReply' => $radiusReply,
+            'username' => $username,
+        ),
+    );
+    $_SESSION['reportType'] = "reportsLastConnectionAttempts";
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = sprintf("SELECT CONCAT(COALESCE(ui.firstname, ''), ' ', COALESCE(ui.lastname, '')) AS fullname,
                            pa.%s AS username, pa.pass, pa.reply, pa.%s
                       FROM %s %s", $tableSetting['postauth']['user'], $tableSetting['postauth']['date'],
-                                   $_SESSION['reportTable'], $_SESSION['reportQuery']);
+                                   $reportTable, $reportQuery);
 
     $res = $dbSocket->query($sql);
     $numrows = $res->numRows();

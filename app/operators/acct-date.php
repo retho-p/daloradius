@@ -96,6 +96,19 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'pages_common.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'db_open.php' ]);
 
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
+    $_SESSION['reportType'] = "accountingGeneric";
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-date',
+        'type' => 'accountingGeneric',
+        'filters' => array(
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'username' => $username,
+        ),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
+
     $sql_WHERE = array();
     $partial_query_params = array();
 
@@ -113,12 +126,6 @@
     if (!empty($username)) {
         $sql_WHERE[] = sprintf("username='%s'", $dbSocket->escapeSimple($username));
         $partial_query_params[] = sprintf("username=%s", urlencode($username_enc));
-
-        // setup php session variables for exporting
-        $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-        $_SESSION['reportQuery'] = (count($sql_WHERE) > 0) ? " WHERE " . implode(" AND ", $sql_WHERE) : "";
-        $_SESSION['reportType'] = "accountingGeneric";
-
 
         $sql = sprintf("SELECT COUNT(radacctid) FROM %s", $configValues['CONFIG_DB_TBL_RADACCT']);
         if (count($sql_WHERE) > 0) {

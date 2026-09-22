@@ -76,10 +76,15 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'pages_common.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'db_open.php' ]);
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-    $_SESSION['reportQuery'] = "";
+    // setup export descriptor; UI queries remain PEAR-based and local
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     $_SESSION['reportType'] = "accountingGeneric";
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-all',
+        'type' => 'accountingGeneric',
+        'filters' => array(),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = sprintf("SELECT COUNT(`radacctid`) FROM %s", $configValues['CONFIG_DB_TBL_RADACCT']);
     $res = $dbSocket->query($sql);

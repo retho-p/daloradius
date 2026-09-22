@@ -30,6 +30,7 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'validation.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'layout.php' ]);
 
+    unset($_SESSION['reportExport']);
 
     // validate this parameter before including menu
     $username = (array_key_exists('username', $_GET) && !empty(str_replace("%", "", trim($_GET['username']))))
@@ -125,10 +126,16 @@
         $sql_WHERE .= sprintf(" AND ra.username LIKE '%%%s%%' ", $dbSocket->escapeSimple($username));
     }
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-    $_SESSION['reportQuery'] = $sql_WHERE;
+    // setup structured session descriptor for exporting
+    $_SESSION['reportExport'] = array(
+        'source' => 'rep-online',
+        'type' => 'reportsOnlineUsers',
+        'filters' => array(
+            'username' => $username,
+        ),
+    );
     $_SESSION['reportType'] = "reportsOnlineUsers";
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql_SELECT = "SELECT ra.username AS username,
                           ra.framedipaddress AS framedipaddress,

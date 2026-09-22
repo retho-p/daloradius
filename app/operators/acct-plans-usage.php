@@ -116,6 +116,20 @@
     include_once('include/management/pages_common.php');
 
 	
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
+    $_SESSION['reportType'] = "reportsPlansUsage";
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-plans-usage',
+        'type' => 'reportsPlansUsage',
+        'filters' => array(
+            'username' => $username,
+            'planname' => $planname,
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+        ),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
+
     $sql_WHERE = array();
     $partial_query_params = array();
     
@@ -147,17 +161,16 @@
         $partial_query_params[] = sprintf("enddate=%s", $enddate);
     }
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = sprintf("%s AS ubi, %s AS ra, %s AS bp", $configValues['CONFIG_DB_TBL_DALOUSERBILLINFO'],
-                                                                        $configValues['CONFIG_DB_TBL_RADACCT'],
-                                                                        $configValues['CONFIG_DB_TBL_DALOBILLINGPLANS']);
-    $_SESSION['reportQuery'] = " WHERE " . implode(" AND ", $sql_WHERE) . " GROUP BY ubi.username";
-    $_SESSION['reportType'] = "reportsPlansUsage";
+    // Keep PEAR UI query state local; exports use the structured descriptor above.
+    $reportTable = sprintf("%s AS ubi, %s AS ra, %s AS bp", $configValues['CONFIG_DB_TBL_DALOUSERBILLINFO'],
+                                                                  $configValues['CONFIG_DB_TBL_RADACCT'],
+                                                                  $configValues['CONFIG_DB_TBL_DALOBILLINGPLANS']);
+    $reportQuery = " WHERE " . implode(" AND ", $sql_WHERE) . " GROUP BY ubi.username";
 
     $sql = sprintf("SELECT ubi.username AS username, ubi.planname AS planname, SUM(ra.acctsessiontime) AS sessiontime,
                            SUM(ra.acctinputoctets) AS upload, SUM(ra.acctoutputoctets) AS download,
                            bp.plantimebank AS plantimebank, bp.planTimeType AS planTimeType
-                      FROM %s %s", $_SESSION['reportTable'], $_SESSION['reportQuery']);
+                      FROM %s %s", $reportTable, $reportQuery);
     $logDebugSQL .= "$sql;\n";
     $res = $dbSocket->query($sql);
     
@@ -174,7 +187,7 @@
         $sql = sprintf("SELECT ubi.username AS username, ubi.planname AS planname, SUM(ra.acctsessiontime) AS sessiontime,
                            SUM(ra.acctinputoctets) AS upload, SUM(ra.acctoutputoctets) AS download,
                            bp.plantimebank AS plantimebank, bp.planTimeType AS planTimeType
-                      FROM %s %s", $_SESSION['reportTable'], $_SESSION['reportQuery'])
+                      FROM %s %s", $reportTable, $reportQuery)
              . sprintf(" ORDER BY %s %s LIMIT %s, %s", $orderBy, $orderType, $offset, $rowsPerPage);
         $res = $dbSocket->query($sql);
         $logDebugSQL .= "$sql;\n";

@@ -95,10 +95,14 @@
                ? sprintf(" WHERE FramedIPAddress LIKE '%%%s%%'", $dbSocket->escapeSimple($ipaddress))
                : "";
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     $_SESSION['reportType'] = "accountingGeneric";
-    $_SESSION['reportQuery'] = (!empty($ipaddress)) ? $sql_WHERE : "";
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-ipaddress',
+        'type' => 'accountingGeneric',
+        'filters' => array('ipaddress' => $ipaddress),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = "SELECT ra.RadAcctId, dh.name AS hotspot, ra.UserName, ra.FramedIPAddress AS FramedIPAddress,
                    ra.AcctStartTime, ra.AcctStopTime, ra.AcctSessionTime, ra.AcctInputOctets, ra.AcctOutputOctets,

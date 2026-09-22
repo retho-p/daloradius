@@ -27,6 +27,8 @@
     include('library/check_operator_perm.php');
     include_once('../common/includes/config_read.php');
 
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
+
     include_once("lang/main.php");
     include_once("../common/includes/validation.php");
     include("../common/includes/layout.php");
@@ -40,24 +42,24 @@
     //setting values for the order by and order type variables
     // and in other cases we partially strip some character,
     // and leave validation/escaping to other functions used later in the script
-    $username = (array_key_exists('username', $_GET) && isset($_GET['username']))
+    $username = (array_key_exists('username', $_GET) && is_string($_GET['username']))
               ? trim(str_replace("%", "", $_GET['username'])) : "";
     $username_enc = (!empty($username)) ? htmlspecialchars($username, ENT_QUOTES, 'UTF-8') : "";
     
     // in other cases we just check that syntax is ok
     $date_default = date_range_default('previous_month');
 
-    $startdate = (array_key_exists('startdate', $_GET) && isset($_GET['startdate']) &&
+    $startdate = (array_key_exists('startdate', $_GET) && is_string($_GET['startdate']) &&
                   preg_match(DATE_REGEX, $_GET['startdate'], $m) !== false &&
                   checkdate($m[2], $m[3], $m[1]))
                ? $_GET['startdate'] : $date_default['start'];
 
-    $enddate = (array_key_exists('enddate', $_GET) && isset($_GET['enddate']) &&
+    $enddate = (array_key_exists('enddate', $_GET) && is_string($_GET['enddate']) &&
                 preg_match(DATE_REGEX, $_GET['enddate'], $m) !== false &&
                 checkdate($m[2], $m[3], $m[1]))
              ? $_GET['enddate'] : $date_default['end'];
     
-    $invoice_status = (array_key_exists('invoice_status', $_GET) && isset($_GET['invoice_status']))
+    $invoice_status = (array_key_exists('invoice_status', $_GET) && is_string($_GET['invoice_status']))
                     ? trim($_GET['invoice_status']) : "";
     
     $cols = array(
@@ -105,6 +107,18 @@
     include('include/management/pages_common.php');
 
     
+    $_SESSION['reportType'] = "reportsInvoiceList";
+    $_SESSION['reportExport'] = array(
+        'source' => 'bill-invoice-report',
+        'type' => 'reportsInvoiceList',
+        'filters' => array(
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'username' => $username,
+            'invoice_status' => $invoice_status,
+        ),
+    );
+
     $sql_WHERE = array();
     $partial_query_params = array();
     
@@ -145,11 +159,6 @@
     $sql .= " GROUP BY a.id";
     $res = $dbSocket->query($sql);
     $numrows = $res->numRows();        
-    
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = '';
-    $_SESSION['reportQuery'] = $sql;
-    $_SESSION['reportType'] = "reportsInvoiceList";
     
     if ($numrows > 0) {
         /* START - Related to pages_numbering.php */

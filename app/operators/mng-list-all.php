@@ -25,6 +25,9 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LIBRARY'], 'checklogin.php' ]);
     $operator = $_SESSION['operator_user'];
 
+    // Clear any export state from a previous page before processing this page.
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
+
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LIBRARY'], 'check_operator_perm.php' ]);
     include_once implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LANG'], 'main.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'validation.php' ]);
@@ -109,15 +112,21 @@
     // imploding nested condition 1
     $sql_WHERE[] = sprintf("(%s)", implode(" OR ", $nested_condition1));
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = sprintf("%s AS rc INNER JOIN %s AS ui ON rc.username = ui.username",
-                                       $configValues['CONFIG_DB_TBL_RADCHECK'],
-                                       $configValues['CONFIG_DB_TBL_DALOUSERINFO']);
-    $_SESSION['reportQuery'] = " WHERE " . implode(" AND ", $sql_WHERE);
+    // Build the page query locally; export state carries only validated descriptors.
+    $reportTable = sprintf("%s AS rc INNER JOIN %s AS ui ON rc.username = ui.username",
+                           $configValues['CONFIG_DB_TBL_RADCHECK'],
+                           $configValues['CONFIG_DB_TBL_DALOUSERINFO']);
+    $reportQuery = " WHERE " . implode(" AND ", $sql_WHERE);
     $_SESSION['reportType'] = "usernameListGeneric";
+    $_SESSION['reportExport'] = array(
+        'source' => 'mng-list-all',
+        'type' => 'usernameListGeneric',
+        'filters' => array(),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     // compute total number of rows matching the query for pagination
-    $sql_count = sprintf("SELECT COUNT(DISTINCT rc.username) AS count FROM %s %s", $_SESSION['reportTable'], $_SESSION['reportQuery']);
+    $sql_count = sprintf("SELECT COUNT(DISTINCT rc.username) AS count FROM %s %s", $reportTable, $reportQuery);
     $res_count = $dbSocket->query($sql_count);
     $logDebugSQL .= "$sql_count;\n";
 
@@ -146,7 +155,7 @@
                          GROUP BY rc.username",
                          $configValues['CONFIG_DB_TBL_RADREPLY'],
                          $configValues['CONFIG_DB_TBL_RADACCT'],
-                         $_SESSION['reportTable'], $_SESSION['reportQuery']);
+                         $reportTable, $reportQuery);
 
         $sql .= sprintf(" ORDER BY %s %s LIMIT %s, %s", $orderBy, $orderType, $offset, $rowsPerPage);
         $res = $dbSocket->query($sql);

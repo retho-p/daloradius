@@ -30,6 +30,8 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'validation.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'layout.php' ]);
 
+    unset($_SESSION['reportExport']);
+
     $date_default = date_range_default('last_30_days');
 
     $startdate = (array_key_exists('startdate', $_GET) && isset($_GET['startdate']) &&
@@ -117,10 +119,18 @@
         $sql_WHERE[] = sprintf("username LIKE '%%%s%%'", $dbSocket->escapeSimple($username));
     }
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-    $_SESSION['reportQuery'] = (count($sql_WHERE) > 0) ? " WHERE " . implode(" AND ", $sql_WHERE) : "";
+    // setup structured session descriptor for exporting
+    $_SESSION['reportExport'] = array(
+        'source' => 'rep-topusers',
+        'type' => 'TopUsers',
+        'filters' => array(
+            'startdate' => $startdate,
+            'enddate' => $enddate,
+            'username' => $username,
+        ),
+    );
     $_SESSION['reportType'] = "TopUsers";
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = "SELECT DISTINCT(ra.username) AS username, ra.FramedIPAddress, rn.shortname AS nasshortname,
                    ra.AcctStartTime, MAX(ra.AcctStopTime),

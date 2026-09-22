@@ -96,10 +96,14 @@
                ? sprintf(" WHERE NASIPAddress LIKE '%%%s%%'", $dbSocket->escapeSimple($nasipaddress))
                : "";
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-    $_SESSION['reportQuery'] = $sql_WHERE;
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     $_SESSION['reportType'] = "accountingGeneric";
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-nasipaddress',
+        'type' => 'accountingGeneric',
+        'filters' => array('nasipaddress' => $nasipaddress),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = "SELECT ra.RadAcctId, dh.name as hotspot, ra.UserName, ra.FramedIPAddress, ra.AcctStartTime, ra.AcctStopTime,
                    ra.AcctSessionTime, ra.AcctInputOctets, ra.AcctOutputOctets,

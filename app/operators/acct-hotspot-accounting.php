@@ -127,11 +127,14 @@
                ? sprintf(" WHERE name IN ('%s')", implode("', '", $tmp))
                : "";
 
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-    $_SESSION['reportQuery'] = $sql_WHERE;
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     $_SESSION['reportType'] = "accountingGeneric";
-
+    $_SESSION['reportExport'] = array(
+        'source' => 'acct-hotspot-accounting',
+        'type' => 'accountingGeneric',
+        'filters' => array('hotspot' => $hotspot),
+    );
+    unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
     $sql = sprintf("SELECT ra.RadAcctId, dhs.name AS hotspot, ra.username, ra.FramedIPAddress, ra.AcctStartTime,
                                ra.AcctStopTime, ra.AcctSessionTime, ra.AcctInputOctets, ra.AcctOutputOctets,

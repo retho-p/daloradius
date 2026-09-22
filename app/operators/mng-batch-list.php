@@ -26,6 +26,9 @@
 
     include('library/check_operator_perm.php');
     include_once('../common/includes/config_read.php');
+
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
+
     include_once("lang/main.php");
     include("../common/includes/layout.php");
 
@@ -64,6 +67,13 @@
                   in_array(strtolower($_GET['orderType']), array( "desc", "asc" )))
                ? strtolower($_GET['orderType']) : "desc";
 
+    $_SESSION['reportType'] = "reportsBatchList";
+    $_SESSION['reportExport'] = array(
+        'source' => 'mng-batch-list',
+        'type' => 'reportsBatchList',
+        'filters' => array(),
+    );
+
 
     // print HTML prologue    
     $title = t('Intro','mngbatchlist.php');
@@ -76,13 +86,6 @@
 
     include('../common/includes/db_open.php');
     include('include/management/pages_common.php');
-    
-    // setup php session variables for exporting
-    $_SESSION['reportTable'] = "";
-    
-    //reportQuery is assigned below to the SQL statement  in $sql
-    $_SESSION['reportQuery'] = "";
-    $_SESSION['reportType'] = "reportsBatchList";
     
     //orig: used as method to get total rows - this is required for the pages_numbering.php page
     $sql = "SELECT bh.id AS bid, bh.batch_name, bh.batch_description, bh.batch_status, COUNT(DISTINCT(ubi.id)) AS total_users,
@@ -97,9 +100,6 @@
                          $configValues['CONFIG_DB_TBL_DALOBILLINGPLANS'],
                          $configValues['CONFIG_DB_TBL_DALOHOTSPOTS']);
 
-    // set the session variable for report query (export)
-    $_SESSION['reportQuery'] = $sql;
-    
     $res = $dbSocket->query($sql);
     $numrows = $res->numRows();
     

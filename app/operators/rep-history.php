@@ -27,6 +27,10 @@
     include_once('../common/includes/config_read.php');
     include('library/check_operator_perm.php');
 
+    // This page has no CSV export builder. Do not reuse a prior page's report.
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery'],
+          $_SESSION['reportType'], $_SESSION['reportParams']);
+
     include_once("lang/main.php");
     include_once("../common/includes/validation.php");
     include("../common/includes/layout.php");
@@ -124,7 +128,6 @@
 
 
         $descriptors['end'] = array();
-        $descriptors['end'][] = get_csv_export_control();
         print_table_prologue($descriptors);
 
         // print table top

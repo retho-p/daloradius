@@ -84,6 +84,7 @@
     print_title_and_help($title, $help);
     
     
+    unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
     $sql_WHERE = "";
     $partial_query_string = "";
     if (!empty($username)) {
@@ -93,10 +94,13 @@
         $sql_WHERE = sprintf(" WHERE username='%s'", $dbSocket->escapeSimple($username));
         $partial_query_string = sprintf("&username=%s", urlencode($username_enc));
 
-        // setup php session variables for exporting
-        $_SESSION['reportTable'] = $configValues['CONFIG_DB_TBL_RADACCT'];
-        $_SESSION['reportQuery'] = $sql_WHERE;
         $_SESSION['reportType'] = "accountingGeneric";
+        $_SESSION['reportExport'] = array(
+            'source' => 'acct-username',
+            'type' => 'accountingGeneric',
+            'filters' => array('username' => $username),
+        );
+        unset($_SESSION['reportTable'], $_SESSION['reportQuery']);
 
         $sql = sprintf("SELECT COUNT(`radacctid`) FROM %s", $configValues['CONFIG_DB_TBL_RADACCT']) . $sql_WHERE;
         $res = $dbSocket->query($sql);
