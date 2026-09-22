@@ -31,6 +31,10 @@ if (strpos($_SERVER['PHP_SELF'], '/common/includes/db_open.php') !== false) {
 
     include(__DIR__ . '/config_read.php');
     include(__DIR__ . '/db_table_conventions.php');
+    // PDO is opt-in while legacy PEAR callers remain. A migrated block may use
+    // $pdo = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+    // Keep every statement of a transaction on that same PDO handle.
+    require_once(__DIR__ . '/pdo_connection.php');
 
     // setup database connection information according to the session's location name which is held in $SESSION['location_name'].
     // this is introduced in order to provide daloRADIUS to authenticate and manage several database backends without having to

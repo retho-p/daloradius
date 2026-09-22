@@ -28,4 +28,9 @@ if (strpos($_SERVER['PHP_SELF'], '/common/includes/db_close.php') !== false) {
     exit;
 }
 
+// Closing a PDO connection releases the local reference; never invent a PDO
+// disconnect method. The legacy socket remains active until all pages migrate.
+if (isset($pdo)) {
+    $pdo = null;
+}
 $dbSocket->disconnect();
