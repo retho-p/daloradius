@@ -31,6 +31,7 @@
     include_once("../common/includes/validation.php");
     include("../common/includes/layout.php");
     include("include/management/functions.php");
+    require_once("library/invoice_create.php");
     include_once("include/management/populate_selectbox.php");
     
     // init logging variables
@@ -78,57 +79,65 @@
                 $current_datetime = date('Y-m-d H:i:s');
                 $currBy = $operator;
                         
-                $user_id = (array_key_exists('user_id', $_POST) && !empty(trim($_POST['user_id'])) &&
+                $invalidHeader = false;
+                foreach (array('user_id', 'invoice_type_id', 'invoice_status_id',
+                               'invoice_date', 'invoice_notes') as $field) {
+                    if (array_key_exists($field, $_POST) && !is_string($_POST[$field])) {
+                        $invalidHeader = true;
+                    }
+                }
+                $user_id = (isset($_POST['user_id']) && is_string($_POST['user_id']) &&
                             in_array(trim($_POST['user_id']), array_keys($valid_users)))
-                         ? intval(trim($_POST['user_id'])) : "";
-                
-                $invoice_type_id = (array_key_exists('invoice_type_id', $_POST) && !empty(trim($_POST['invoice_type_id'])) &&
-                                    in_array(trim($_POST['invoice_type_id']), array_keys($valid_types)))
-                                 ? intval(trim($_POST['invoice_type_id'])) : "";
+                         ? intval(trim($_POST['user_id'])) : 0;
 
-                $invoice_status_id = (array_key_exists('invoice_status_id', $_POST) && !empty(trim($_POST['invoice_status_id'])) &&
+                $invoice_type_id = (isset($_POST['invoice_type_id']) && is_string($_POST['invoice_type_id']) &&
+                                    in_array(trim($_POST['invoice_type_id']), array_keys($valid_types)))
+                                 ? intval(trim($_POST['invoice_type_id'])) : 0;
+
+                $invoice_status_id = (isset($_POST['invoice_status_id']) && is_string($_POST['invoice_status_id']) &&
                                       in_array(trim($_POST['invoice_status_id']), array_keys($valid_statuses)))
                                    ? intval(trim($_POST['invoice_status_id'])) : 1;
-            
-                $invoice_date = (
-                                    array_key_exists('invoice_date', $_POST) &&
-                                    !empty(trim($_POST['invoice_date'])) &&
-                                    preg_match(DATE_REGEX, trim($_POST['invoice_date']), $m) !== false &&
-                                    checkdate($m[2], $m[3], $m[1])
-                                ) ? trim($_POST['invoice_date']) : date('Y-m-d');
+                if (isset($_POST['invoice_status_id']) && is_string($_POST['invoice_status_id']) &&
+                    trim($_POST['invoice_status_id']) !== '' &&
+                    !in_array(trim($_POST['invoice_status_id']), array_keys($valid_statuses))) {
+                    $invalidHeader = true;
+                }
 
-                $invoice_notes = (array_key_exists('invoice_notes', $_POST) && !empty(trim($_POST['invoice_notes'])))
+                $validDate = isset($_POST['invoice_date']) && is_string($_POST['invoice_date']) &&
+                             trim($_POST['invoice_date']) !== '' &&
+                             preg_match(DATE_REGEX, trim($_POST['invoice_date']), $m) === 1 &&
+                             checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+                if (isset($_POST['invoice_date']) && is_string($_POST['invoice_date']) &&
+                    trim($_POST['invoice_date']) !== '' && !$validDate) {
+                    $invalidHeader = true;
+                }
+                $invoice_date = $validDate ? trim($_POST['invoice_date']) : date('Y-m-d');
+
+                $invoice_notes = (isset($_POST['invoice_notes']) && is_string($_POST['invoice_notes']))
                                ? trim($_POST['invoice_notes']) : "";
 
-                
-                if (empty($user_id)) {
-                    // required/invalid
-                    $failureMsg = sprintf("The required field '%s' is empty or invalid", t('all','UserId'));
+                if ($invalidHeader || $user_id === 0 || $invoice_type_id === 0) {
+                    $failureMsg = "Required invoice fields are empty or invalid";
                     $logAction .= "$failureMsg on page: ";
                 } else {
-                    $sql = sprintf("INSERT INTO %s (id, user_id, date, status_id, type_id, notes,
-                                                    creationdate, creationby, updatedate, updateby)
-                                            VALUES (0, %d, '%s', %d, %d, '%s', '%s', '%s', NULL, NULL)",
-                                   $configValues['CONFIG_DB_TBL_DALOBILLINGINVOICE'], $user_id, $invoice_date,
-                                   $invoice_status_id, $invoice_type_id, $dbSocket->escapeSimple($invoice_notes),
-                                   $current_datetime, $currBy);
-                    $res = $dbSocket->query($sql);
-                    $logDebugSQL .= "$sql;\n";
-                    
-                    if (!DB::isError($res)) {
-                        // retrieve invoice id
-                        $sql = sprintf("SELECT LAST_INSERT_ID() FROM %s",
-                                       $configValues['CONFIG_DB_TBL_DALOBILLINGINVOICE']);
-                        $invoice_id = $dbSocket->getOne($sql);
-                        
-                        $items = add_invoice_items($dbSocket, $invoice_id, false);
+                    try {
+                        // Parse every item before the first write. Both the header and
+                        // all children must use this one PDO handle and transaction.
+                        $submittedItems = dalo_invoice_items_from_post($_POST);
+                        $pdo = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+                        list($invoice_id, $items) = dalo_create_invoice($pdo, $configValues,
+                            array('user_id' => $user_id, 'date' => $invoice_date,
+                                  'status_id' => $invoice_status_id, 'type_id' => $invoice_type_id,
+                                  'notes' => $invoice_notes, 'created' => $current_datetime,
+                                  'creator' => $currBy), $submittedItems);
                         $successMsg = sprintf("Successfully added new invoice (id: #<strong>%d</strong>) with %d item(s)",
                                               $invoice_id, $items);
                         $logAction .= sprintf("Successfully added new invoice [id: #%d, items: %d] on page: ",
                                               $invoice_id, $items);
-                    } else {
-                        $failureMsg = sprintf("Failed to add new invoice (id: #<strong>%d</strong>)", $invoice_id);
-                        $logAction .= sprintf("Failed to add new invoice [id: #%d] on page: ", $payment_id);
+                    } catch (Throwable $error) {
+                        // Never echo SQL, connection details or input in the HTTP error.
+                        $failureMsg = "Failed to add new invoice or its items";
+                        $logAction .= "$failureMsg on page: ";
                     }
                 }
 
