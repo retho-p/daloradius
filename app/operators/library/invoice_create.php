@@ -4,7 +4,8 @@
 function dalo_invoice_table($config, $key) {
     if (!in_array($key, array('CONFIG_DB_TBL_DALOBILLINGINVOICE',
                               'CONFIG_DB_TBL_DALOBILLINGINVOICEITEMS',
-                              'CONFIG_DB_TBL_DALOBILLINGPLANS'), true) ||
+                              'CONFIG_DB_TBL_DALOBILLINGPLANS',
+                              'CONFIG_DB_TBL_DALOPAYMENTS'), true) ||
         !isset($config[$key]) || !is_string($config[$key]) ||
         !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $config[$key])) {
         throw new InvalidArgumentException('Invalid invoice table configuration');
