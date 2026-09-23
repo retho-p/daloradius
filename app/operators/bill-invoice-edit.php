@@ -31,6 +31,7 @@
     include_once("../common/includes/validation.php");
     include("../common/includes/layout.php");
     include("include/management/functions.php");
+    require_once("library/invoice_edit.php");
     
     // init logging variables
     $log = "visited page: ";
@@ -75,13 +76,11 @@
         $valid_users["user-$id"] = $value;
     }
     
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $invoice_id = (array_key_exists('invoice_id', $_POST) && intval(trim($_POST['invoice_id'])) > 0)
-                    ? intval(trim($_POST['invoice_id'])) : "";
-    } else {
-        $invoice_id = (array_key_exists('invoice_id', $_REQUEST) && intval(trim($_REQUEST['invoice_id'])) > 0)
-                    ? intval(trim($_REQUEST['invoice_id'])) : "";
-    }
+    $invoiceInput = ($_SERVER['REQUEST_METHOD'] === 'POST')
+                  ? ($_POST['invoice_id'] ?? null) : ($_GET['invoice_id'] ?? null);
+    $invoice_id = (is_string($invoiceInput) && ctype_digit($invoiceInput) &&
+                   (int) $invoiceInput > 0 && (string) (int) $invoiceInput === $invoiceInput)
+                ? (int) $invoiceInput : 0;
     
     // check if this invoice exists
     $sql = sprintf("SELECT COUNT(id) FROM %s WHERE id=%d", $configValues['CONFIG_DB_TBL_DALOBILLINGINVOICE'], $invoice_id);
@@ -103,69 +102,68 @@
                 $failureMsg = "invalid or empty invoice id, please specify a valid invoice id to edit.";
                 $logAction .= "invalid or empty invoice id on page: ";
             } else {
-                $sql_SET = array();
-                
-                // required later
                 $current_datetime = date('Y-m-d H:i:s');
-                $currBy = $operator;
-            
-                $sql_SET[] = sprintf("updatedate='%s'", $current_datetime);
-                $sql_SET[] = sprintf("updateby='%s'", $currBy);
-            
-                $user_id = (array_key_exists('user_id', $_POST) && !empty(trim($_POST['user_id'])) &&
-                                    in_array(trim($_POST['user_id']), array_keys($valid_users)))
-                                 ? intval(str_replace("user-", "", trim($_POST['user_id']))) : "";
-                if (!empty($user_id)) {
-                    $sql_SET[] = sprintf("user_id=%d", $user_id);
+                $changes = array();
+                $invalid = false;
+                foreach (array('user_id' => array($valid_users, 'user-'),
+                               'invoice_type_id' => array($valid_types, 'type-'),
+                               'invoice_status_id' => array($valid_statuses, 'status-')) as $field => $rule) {
+                    if (!array_key_exists($field, $_POST)) {
+                        continue;
+                    }
+                    $value = $_POST[$field];
+                    if (!is_string($value)) {
+                        $invalid = true;
+                    } elseif (trim($value) !== '') {
+                        if (!array_key_exists(trim($value), $rule[0])) {
+                            $invalid = true;
+                        } else {
+                            $column = ($field === 'user_id') ? 'user_id' :
+                                      (($field === 'invoice_type_id') ? 'type_id' : 'status_id');
+                            $changes[$column] = (int) substr(trim($value), strlen($rule[1]));
+                        }
+                    }
                 }
-            
-                $invoice_type_id = (array_key_exists('invoice_type_id', $_POST) && !empty(trim($_POST['invoice_type_id'])) &&
-                                    in_array(trim($_POST['invoice_type_id']), array_keys($valid_types)))
-                                 ? intval(str_replace("type-", "", trim($_POST['invoice_type_id']))) : "";
-                if (!empty($invoice_type_id)) {
-                    $sql_SET[] = sprintf("type_id=%d", $invoice_type_id);
+                if (array_key_exists('invoice_date', $_POST)) {
+                    if (!is_string($_POST['invoice_date'])) {
+                        $invalid = true;
+                    } elseif (trim($_POST['invoice_date']) !== '') {
+                        $date = trim($_POST['invoice_date']);
+                        if (preg_match(DATE_REGEX, $date, $m) !== 1 ||
+                            !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                            $invalid = true;
+                        } else {
+                            $changes['date'] = $date;
+                        }
+                    }
                 }
-            
-                $invoice_status_id = (array_key_exists('invoice_status_id', $_POST) && !empty(trim($_POST['invoice_status_id'])) &&
-                                    in_array(trim($_POST['invoice_status_id']), array_keys($valid_statuses)))
-                                 ? intval(str_replace("status-", "", trim($_POST['invoice_status_id']))) : "";
-                if (!empty($invoice_status_id)) {
-                    $sql_SET[] = sprintf("status_id=%d", $invoice_status_id);
+                if (array_key_exists('invoice_notes', $_POST)) {
+                    if (!is_string($_POST['invoice_notes'])) {
+                        $invalid = true;
+                    } elseif (trim($_POST['invoice_notes']) !== '') {
+                        $changes['notes'] = trim($_POST['invoice_notes']);
+                    }
                 }
-            
-                $invoice_date = (
-                                    array_key_exists('invoice_date', $_POST) &&
-                                    !empty(trim($_POST['invoice_date'])) &&
-                                    preg_match(DATE_REGEX, trim($_POST['invoice_date']), $m) !== false &&
-                                    checkdate($m[2], $m[3], $m[1])
-                                ) ? trim($_POST['invoice_date']) : "";
-                if (!empty($invoice_date)) {
-                    $sql_SET[] = sprintf("date='%s'", $invoice_date);
-                }
-            
-                $invoice_notes = (array_key_exists('invoice_notes', $_POST) && !empty(trim($_POST['invoice_notes'])))
-                               ? trim($_POST['invoice_notes']) : "";
-                if (!empty($invoice_notes)) {
-                    $sql_SET[] = sprintf("notes='%s'", $dbSocket->escapeSimple($invoice_notes));
-                }
-            
-                $sql = sprintf("UPDATE %s SET ", $configValues['CONFIG_DB_TBL_DALOBILLINGINVOICE'])
-                     . implode(", ", $sql_SET)
-                     . sprintf(" WHERE id=%d", $invoice);
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-                
-                if (!DB::isError($res)) {
-                    $items = add_invoice_items($dbSocket, $invoice_id, true);
-                    $successMsg = sprintf("Successfully added new invoice (id: #<strong>%d</strong>) with %d item(s)",
-                                          $invoice_id, $items);
-                    $logAction .= sprintf("Successfully added new invoice [id: #%d, items: %d] on page: ",
-                                          $invoice_id, $items);
+
+                if ($invalid) {
+                    $failureMsg = "Invalid invoice fields";
+                    $logAction .= "$failureMsg on page: ";
                 } else {
-                    $failureMsg = sprintf("Failed to add new invoice (id: #<strong>%d</strong>)", $invoice_id);
-                    $logAction .= sprintf("Failed to add new invoice [id: #%d] on page: ", $payment_id);
+                    try {
+                        $submittedItems = dalo_invoice_items_from_post($_POST);
+                        $pdo = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+                        $items = dalo_replace_invoice_items($pdo, $configValues, $invoice_id,
+                                                             $changes, $submittedItems,
+                                                             $current_datetime, $operator);
+                        $successMsg = sprintf("Successfully updated invoice (id: #<strong>%d</strong>) with %d item(s)",
+                                              $invoice_id, $items);
+                        $logAction .= sprintf("Successfully updated invoice [id: #%d, items: %d] on page: ",
+                                              $invoice_id, $items);
+                    } catch (Throwable $error) {
+                        $failureMsg = "Failed to update invoice or its items";
+                        $logAction .= "$failureMsg on page: ";
+                    }
                 }
-            
             }
         
         } else {
@@ -567,6 +565,10 @@ EOF;
                 printf('<tr id="%s">', $itemRowId);
                 
                 $this_select = str_replace("itemXXXXXXX[plan]", sprintf("item%d[plan]", $this_id), $planSelect);
+                // Keep the existing plan selected when the form is submitted unchanged.
+                $this_select = str_replace(sprintf('value="%d"', (int) $this_plan_id),
+                                           sprintf('value="%d" selected', (int) $this_plan_id),
+                                           $this_select);
                 printf("<td>%s</td>", $this_select);
                 
                 $input_name_value = array(

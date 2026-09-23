@@ -46,6 +46,24 @@ function dalo_invoice_items_from_post($post) {
     return $items;
 }
 
+/** Lock selected active plans for the lifetime of an invoice write transaction. */
+function dalo_lock_invoice_item_plans(PDO $pdo, $plansTable, $items) {
+    $checkPlan = $pdo->prepare("SELECT id FROM $plansTable
+        WHERE id = :plan AND planActive = 'yes' FOR UPDATE");
+    $checked = array();
+    foreach ($items as $item) {
+        $plan = $item['plan'];
+        if (!isset($checked[$plan])) {
+            $checkPlan->execute(array(':plan' => $plan));
+            if ($checkPlan->fetchColumn() === false) {
+                throw new InvalidArgumentException('Invalid or inactive invoice item plan');
+            }
+            $checkPlan->closeCursor();
+            $checked[$plan] = true;
+        }
+    }
+}
+
 /** Return [new id, item count]; never mix PEAR statements into this transaction. */
 function dalo_create_invoice(PDO $pdo, $config, $invoice, $items) {
     $table = dalo_invoice_table($config, 'CONFIG_DB_TBL_DALOBILLINGINVOICE');
@@ -57,20 +75,7 @@ function dalo_create_invoice(PDO $pdo, $config, $invoice, $items) {
     try {
         // The UI only lists active plans. Lock each selected plan until commit
         // so a concurrent deactivation/deletion cannot create a dangling item.
-        $checkPlan = $pdo->prepare("SELECT id FROM $plansTable
-            WHERE id = :plan AND planActive = 'yes' FOR UPDATE");
-        $checked = array();
-        foreach ($items as $item) {
-            $plan = $item['plan'];
-            if (!isset($checked[$plan])) {
-                $checkPlan->execute(array(':plan' => $plan));
-                if ($checkPlan->fetchColumn() === false) {
-                    throw new InvalidArgumentException('Invalid or inactive invoice item plan');
-                }
-                $checkPlan->closeCursor();
-                $checked[$plan] = true;
-            }
-        }
+        dalo_lock_invoice_item_plans($pdo, $plansTable, $items);
         $insert = $pdo->prepare("INSERT INTO $table
             (user_id, date, status_id, type_id, notes, creationdate, creationby, updatedate, updateby)
             VALUES (:user_id, :date, :status_id, :type_id, :notes, :created, :creator, NULL, NULL)");
