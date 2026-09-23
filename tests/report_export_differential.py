@@ -127,6 +127,7 @@ INSERT INTO payment (id,invoice_id,amount,date,notes)
                 results[page] = {'page_status':page_status, 'page_length':len(page_body),
                                  'export_status':status, 'csv':csv}
                 if page == 'rep-batch-details':
+                    results[page]['page_has_alice_row'] = 'value="alice" name="username[]"' in page_body
                     total_status, total_csv = request(export + 'reportsBatchTotalUsers')
                     results['rep-batch-total-users'] = {'export_status':total_status, 'csv':total_csv}
             status, csv = request(export + 'usernameListByGroup&groupname=fixture-group')
@@ -146,6 +147,8 @@ INSERT INTO payment (id,invoice_id,amount,date,notes)
                         # batch_name/acctstarttime fields (or matching rows
                         # with this search filter); now they are populated.
                         assert actual['export_status'] == expected['export_status'] == 200
+                        assert expected['page_has_alice_row'] is False
+                        assert actual['page_has_alice_row'] is True
                         assert 'fixture-batch,alice,' in actual['csv']
                     else:
                         assert actual['export_status'] == expected['export_status'], name

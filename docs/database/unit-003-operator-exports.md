@@ -19,6 +19,6 @@ DALO_SOURCE_ROOT="$PWD" DALO_BASELINE_JSON=/path/to/baseline.json python3 tests/
 The HTTP tests use temporary containers and databases; they do not authenticate to or mutate the running lab. The differential test exercises 18 source/type combinations with equivalent seeded data. Sixteen CSV results match the PEAR reference exactly. Two known pre-existing defects are not copied into the new exporter:
 
 - `acct-plans-usage`: the PEAR export fails with an ambiguous `username` column (HTTP 500); the PDO query qualifies the column and returns rows.
-- `rep-batch-details`: with the seeded search filter, the PEAR export has only a header because the source query/formatter disagree; the PDO export returns the matching user with batch name and start time.
+- `rep-batch-details`: the PEAR page formatted the username search as the literal pattern `%s%`, hiding matching users. The source page now interpolates the escaped username correctly; its displayed rows and the PDO export both return the matching user. The legacy export also omitted the batch name and start-time aliases expected by its CSV formatter; the PDO export returns those values.
 
 The `mng-batch-list` export continues to show an empty Active Users field and zero Batch Cost because that page's legacy query has no accounting join; `rep-batch-list` keeps its separate accounting-join semantics. Changing those calculations is outside this migration. These checks do not establish production authentication, live dataset parity, or performance improvement.
