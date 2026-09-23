@@ -36,15 +36,37 @@ function dalo_plan_profiles_from_post($input) {
     return array_values($profiles);
 }
 
-/** Return number of profiles; reject duplicates and roll back any failed mapping. */
-function dalo_create_billing_plan(PDO $pdo, $config, $values, $profiles, $created, $operator) {
-    $plansTable = dalo_plan_table($config, 'CONFIG_DB_TBL_DALOBILLINGPLANS');
-    $mappingTable = dalo_plan_table($config, 'CONFIG_DB_TBL_DALOBILLINGPLANSPROFILES');
+/** Validate selected profiles against the three sources shown by the form. */
+function dalo_validate_plan_profiles(PDO $pdo, $config, $profiles) {
     $groupTables = array(
         dalo_plan_table($config, 'CONFIG_DB_TBL_RADGROUPCHECK'),
         dalo_plan_table($config, 'CONFIG_DB_TBL_RADGROUPREPLY'),
         dalo_plan_table($config, 'CONFIG_DB_TBL_RADUSERGROUP'),
     );
+    $groupChecks = array();
+    foreach ($groupTables as $table) {
+        $groupChecks[] = $pdo->prepare("SELECT groupname FROM $table WHERE groupname = :name LIMIT 1 FOR UPDATE");
+    }
+    foreach ($profiles as $profile) {
+        $found = false;
+        foreach ($groupChecks as $groupCheck) {
+            $groupCheck->execute(array(':name' => $profile));
+            $found = $groupCheck->fetchColumn() !== false;
+            $groupCheck->closeCursor();
+            if ($found) {
+                break;
+            }
+        }
+        if (!$found) {
+            throw new InvalidArgumentException('Unknown profile');
+        }
+    }
+}
+
+/** Return number of profiles; reject duplicates and roll back any failed mapping. */
+function dalo_create_billing_plan(PDO $pdo, $config, $values, $profiles, $created, $operator) {
+    $plansTable = dalo_plan_table($config, 'CONFIG_DB_TBL_DALOBILLINGPLANS');
+    $mappingTable = dalo_plan_table($config, 'CONFIG_DB_TBL_DALOBILLINGPLANSPROFILES');
     $name = $values['planName'];
     if (!is_string($name) || trim($name) === '' ||
         (function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name)) > 128) {
@@ -85,26 +107,7 @@ function dalo_create_billing_plan(PDO $pdo, $config, $values, $profiles, $create
             throw new DomainException('Billing plan already exists');
         }
         $check->closeCursor();
-        // The UI lists names from these three sources. Lock the selected rows
-        // so a concurrent profile deletion cannot invalidate a new mapping.
-        $groupChecks = array();
-        foreach ($groupTables as $table) {
-            $groupChecks[] = $pdo->prepare("SELECT groupname FROM $table WHERE groupname = :name LIMIT 1 FOR UPDATE");
-        }
-        foreach ($profiles as $profile) {
-            $found = false;
-            foreach ($groupChecks as $groupCheck) {
-                $groupCheck->execute(array(':name' => $profile));
-                $found = $groupCheck->fetchColumn() !== false;
-                $groupCheck->closeCursor();
-                if ($found) {
-                    break;
-                }
-            }
-            if (!$found) {
-                throw new InvalidArgumentException('Unknown profile');
-            }
-        }
+        dalo_validate_plan_profiles($pdo, $config, $profiles);
 
         $insert = $pdo->prepare("INSERT INTO $plansTable (" . implode(', ', $columns) .
                                 ') VALUES (' . implode(', ', $placeholders) . ')');

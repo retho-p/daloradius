@@ -31,6 +31,8 @@
     include_once("../common/includes/validation.php");
     include("../common/includes/layout.php");
     include("include/management/functions.php");
+    require_once("../common/includes/pdo_connection.php");
+    require_once("library/plan_edit.php");
     
     // init logging variables
     $log = "visited page: ";
@@ -38,15 +40,40 @@
     $logDebugSQL = "";
     
     
+    // Reject nested fields before legacy normalization calls trim(), and preserve
+    // the exact immutable plan name (including percent signs) on both methods.
+    $invalidRequest = false;
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $planName = (array_key_exists('planName', $_POST) && !empty(str_replace("%", "", trim($_POST['planName']))))
-                  ? str_replace("%", "", trim($_POST['planName'])) : "";
-    } else {
-        $planName = (array_key_exists('planName', $_REQUEST) && !empty(str_replace("%", "", trim($_REQUEST['planName']))))
-                  ? str_replace("%", "", trim($_REQUEST['planName'])) : "";
+        foreach (array('planName', 'planId', 'planType', 'planTimeType',
+                       'planTimeBank', 'planTimeRefillCost', 'planBandwidthUp',
+                       'planBandwidthDown', 'planTrafficTotal', 'planTrafficDown',
+                       'planTrafficUp', 'planTrafficRefillCost', 'planRecurring',
+                       'planRecurringPeriod', 'planRecurringBillingSchedule',
+                       'planActive', 'planCost', 'planSetupCost', 'planTax',
+                       'planCurrency', 'planGroup') as $field) {
+            if (array_key_exists($field, $_POST) && !is_string($_POST[$field])) {
+                $invalidRequest = true;
+                $_POST[$field] = '';
+            }
+        }
+        if (array_key_exists('groups', $_POST)) {
+            if (!is_array($_POST['groups'])) {
+                $invalidRequest = true;
+                $_POST['groups'] = array();
+            } else {
+                foreach ($_POST['groups'] as $group) {
+                    if (!is_string($group)) {
+                        $invalidRequest = true;
+                        $_POST['groups'] = array();
+                        break;
+                    }
+                }
+            }
+        }
     }
-    
-    
+    $source = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+    $planName = (isset($source['planName']) && is_string($source['planName']))
+              ? trim($source['planName']) : '';
     include('../common/includes/db_open.php');
     
     // check if this plan exists
@@ -60,8 +87,8 @@
         // we reset the plan if it does not exist
         $planName = "";
     }
+    $planName_enc = ($planName !== '') ? htmlspecialchars($planName, ENT_QUOTES, 'UTF-8') : '';
     
-    $planName_enc = (!empty($planName)) ? htmlspecialchars($planName, ENT_QUOTES, 'UTF-8') : "";
     
     //feed the sidebar variables
     $edit_planname = $planName_enc;
@@ -70,7 +97,7 @@
     
         if (array_key_exists('csrf_token', $_POST) && isset($_POST['csrf_token']) && dalo_check_csrf_token($_POST['csrf_token'])) {
         
-            if (empty($planName)) {
+            if ($invalidRequest || $planName === '') {
                 // required/invalid
                 $failureMsg = sprintf("The required field '%s' is empty or invalid", t('all','PlanName'));
                 $logAction .= "$failureMsg on page: ";
@@ -121,39 +148,41 @@
                 $groups = (array_key_exists('groups', $_POST) && isset($_POST['groups'])) ? $_POST['groups'] : array();
         
                 
-                $sql = sprintf("UPDATE %s SET planId='%s', planType='%s', planTimeType='%s', planTimeBank='%s',
-                                              planTimeRefillCost='%s', planBandwidthUp='%s', planBandwidthDown='%s',
-                                              planTrafficTotal='%s', planTrafficDown='%s', planTrafficUp='%s', planTrafficRefillCost='%s',
-                                              planRecurring='%s', planRecurringPeriod='%s', planRecurringBillingSchedule='%s', planCost='%s',
-                                              planSetupCost='%s', planTax='%s', planCurrency='%s', planActive='%s', planGroup='%s',
-                                              updatedate='%s', updateby='%s' WHERE planName='%s'",
-                               $configValues['CONFIG_DB_TBL_DALOBILLINGPLANS'], $dbSocket->escapeSimple($planId),
-                               $dbSocket->escapeSimple($planType), $dbSocket->escapeSimple($planTimeType), $dbSocket->escapeSimple($planTimeBank),
-                                   $dbSocket->escapeSimple($planTimeRefillCost), $dbSocket->escapeSimple($planBandwidthUp),
-                                   $dbSocket->escapeSimple($planBandwidthDown), $dbSocket->escapeSimple($planTrafficTotal),
-                                   $dbSocket->escapeSimple($planTrafficDown), $dbSocket->escapeSimple($planTrafficUp), 
-                                   $dbSocket->escapeSimple($planTrafficRefillCost), $dbSocket->escapeSimple($planRecurring),
-                                   $dbSocket->escapeSimple($planRecurringPeriod), $dbSocket->escapeSimple($planRecurringBillingSchedule),
-                                   $dbSocket->escapeSimple($planCost), $dbSocket->escapeSimple($planSetupCost),
-                                   $dbSocket->escapeSimple($planTax), $dbSocket->escapeSimple($planCurrency),
-                                   $dbSocket->escapeSimple($planActive), $dbSocket->escapeSimple($planGroup), $current_datetime, $currBy,
-                                   $dbSocket->escapeSimple($planName));
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-                
-                // to change a plan's association of the profiles we removed all existing
-                // association for this group and re-create it.
-                $sql = sprintf("DELETE FROM %s WHERE plan_name='%s'",
-                               $configValues['CONFIG_DB_TBL_DALOBILLINGPLANSPROFILES'],
-                               $dbSocket->escapeSimple($planName));
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-                
-                $groupsCount = insert_multiple_plan_group_mappings($dbSocket, $planName, $groups);
-                    
-                $format = "The %s named %s has been successfully updated. There are %d %s associated to it";
-                $successMsg = sprintf($format, t('all','PlanName'), $planName_enc, $groupsCount, t('title','Profiles'));
-                $logAction .= sprintf("$format on page: ", t('all','PlanName'), $planName, $groupsCount, t('title','Profiles'));
+                try {
+                    $profiles = dalo_plan_profiles_from_post($groups);
+                    $values = array(
+                        'planId' => $planId, 'planType' => $planType,
+                        'planTimeType' => $planTimeType, 'planTimeBank' => $planTimeBank,
+                        'planTimeRefillCost' => $planTimeRefillCost,
+                        'planBandwidthUp' => $planBandwidthUp,
+                        'planBandwidthDown' => $planBandwidthDown,
+                        'planTrafficTotal' => $planTrafficTotal,
+                        'planTrafficDown' => $planTrafficDown,
+                        'planTrafficUp' => $planTrafficUp,
+                        'planTrafficRefillCost' => $planTrafficRefillCost,
+                        'planRecurring' => $planRecurring,
+                        'planRecurringPeriod' => $planRecurringPeriod,
+                        'planRecurringBillingSchedule' => $planRecurringBillingSchedule,
+                        'planCost' => $planCost, 'planSetupCost' => $planSetupCost,
+                        'planTax' => $planTax, 'planCurrency' => $planCurrency,
+                        'planActive' => $planActive, 'planGroup' => $planGroup,
+                    );
+                    $pdo = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+                    $groupsCount = dalo_edit_billing_plan($pdo, $configValues, $planName,
+                                                           $values, $profiles, $current_datetime, $currBy);
+                    $format = "The %s named %s has been successfully updated. There are %d %s associated to it";
+                    $successMsg = sprintf($format, t('all','PlanName'), $planName_enc, $groupsCount, t('title','Profiles'));
+                    $logAction .= sprintf("$format on page: ", t('all','PlanName'), $planName, $groupsCount, t('title','Profiles'));
+                } catch (InvalidArgumentException $error) {
+                    $failureMsg = "Invalid plan or profile selection";
+                    $logAction .= "$failureMsg on page: ";
+                } catch (DomainException $error) {
+                    $failureMsg = "The selected plan no longer exists";
+                    $logAction .= "$failureMsg on page: ";
+                } catch (Throwable $error) {
+                    $failureMsg = "Failed to update the plan and its profiles";
+                    $logAction .= "$failureMsg on page: ";
+                }
             }
         
         } else {
@@ -264,7 +293,7 @@
                                         "type" => "select",
                                         "options" => array( "yes", "no" ),
                                         "caption" => t('all','PlanActive'),
-                                        "name" => "planRecurring",
+                                        "name" => "planActive",
                                         "selected_value" => $planActive,
                                      );
 
