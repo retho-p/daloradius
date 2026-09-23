@@ -23,6 +23,8 @@
 
     include ("library/checklogin.php");
     $login_user = $_SESSION['login_user'];
+    unset($_SESSION['userReportExport'], $_SESSION['export_query'],
+          $_SESSION['export_items'], $_SESSION['export_title']);
 
     include_once('../common/includes/config_read.php');
 
@@ -54,17 +56,17 @@
                ? strtolower($_GET['orderType']) : "asc";
 
     // in other cases we just check that syntax is ok
-    $startdate = (array_key_exists('startdate', $_GET) && isset($_GET['startdate']) &&
-                  preg_match(DATE_REGEX, $_GET['startdate'], $m) !== false &&
-                  checkdate($m[2], $m[3], $m[1]))
+    $startdate = (array_key_exists('startdate', $_GET) && is_string($_GET['startdate']) &&
+                  preg_match(DATE_REGEX, $_GET['startdate'], $m) === 1 &&
+                  checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
                ? $_GET['startdate'] : "";
 
-    $enddate = (array_key_exists('enddate', $_GET) && isset($_GET['enddate']) &&
-                preg_match(DATE_REGEX, $_GET['enddate'], $m) !== false &&
-                checkdate($m[2], $m[3], $m[1]))
+    $enddate = (array_key_exists('enddate', $_GET) && is_string($_GET['enddate']) &&
+                preg_match(DATE_REGEX, $_GET['enddate'], $m) === 1 &&
+                checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
              ? $_GET['enddate'] : "";
 
-    $invoice_status = (array_key_exists('invoice_status', $_GET) && isset($_GET['invoice_status']))
+    $invoice_status = (array_key_exists('invoice_status', $_GET) && is_string($_GET['invoice_status']))
                     ? trim($_GET['invoice_status']) : "";
 
     $username = $login_user;
@@ -136,9 +138,12 @@
 
         /* END */
 
-        // setup php session variables for exporting
-        $_SESSION["export_items"] = array( "id", "date", "status", "totalpayed", "totalbilled" );
-        $_SESSION["export_query"] = $sql;
+        // Keep the PEAR display SQL local; CSV export rebuilds a user-scoped query.
+        $_SESSION['userReportExport'] = array(
+            'source' => 'bill-invoice-report',
+            'filters' => array('startdate' => $startdate, 'enddate' => $enddate,
+                               'invoice_status' => $invoice_status),
+        );
 
         // we execute and log the actual query
         $sql .= sprintf(" ORDER BY %s %s LIMIT %s, %s", $orderBy, $orderType, $offset, $rowsPerPage);

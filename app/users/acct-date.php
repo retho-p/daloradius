@@ -23,6 +23,9 @@
 
     include("library/checklogin.php");
     $login_user = $_SESSION['login_user'];
+    // A zero-row page must not leave another report exportable.
+    unset($_SESSION['userReportExport'], $_SESSION['export_query'],
+          $_SESSION['export_items'], $_SESSION['export_title']);
     include_once('../common/includes/config_read.php');
 
     include_once("lang/main.php");
@@ -33,14 +36,16 @@
     $username_enc = (!empty($username)) ? htmlspecialchars($username, ENT_QUOTES, 'UTF-8') : "";
 
     // validate this parameter before including menu
-    $startdate = (array_key_exists('startdate', $_GET) && !empty(trim($_GET['startdate'])) &&
-                  preg_match(DATE_REGEX, trim($_GET['startdate']), $m) !== false &&
-                  checkdate($m[2], $m[3], $m[1]))
+    $startdate = (array_key_exists('startdate', $_GET) && is_string($_GET['startdate']) &&
+                  trim($_GET['startdate']) !== '' &&
+                  preg_match(DATE_REGEX, trim($_GET['startdate']), $m) === 1 &&
+                  checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
                ? trim($_GET['startdate']) : "";
 
-    $enddate = (array_key_exists('enddate', $_GET) && !empty(trim($_GET['enddate'])) &&
-                preg_match(DATE_REGEX, trim($_GET['enddate']), $m) !== false &&
-                checkdate($m[2], $m[3], $m[1]))
+    $enddate = (array_key_exists('enddate', $_GET) && is_string($_GET['enddate']) &&
+                trim($_GET['enddate']) !== '' &&
+                preg_match(DATE_REGEX, trim($_GET['enddate']), $m) === 1 &&
+                checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
              ? trim($_GET['enddate']) : "";
     
     $cols = array(
@@ -126,9 +131,11 @@
             $sql .= " WHERE " . implode(" AND ", $sql_WHERE);
         }
 
-        // setup php session variables for exporting
-        $_SESSION["export_items"] = array_keys($cols);
-        $_SESSION["export_query"] = $sql;
+        // The exporter builds its own user-scoped, unpaginated PDO query.
+        $_SESSION['userReportExport'] = array(
+            'source' => 'acct-date',
+            'filters' => array('startdate' => $startdate, 'enddate' => $enddate),
+        );
         
         $sql .= sprintf(" ORDER BY %s %s LIMIT %s, %s", $orderBy, $orderType, $offset, $rowsPerPage);
         $res = $dbSocket->query($sql);
