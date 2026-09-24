@@ -223,7 +223,10 @@
         $skipList = array( ".", "..", ".svn", ".git" );
         foreach ($files as $this_file) {
 
-            if (in_array($this_file, $skipList)) {
+            // Ignore in-progress snapshots: only published .sql files are usable.
+            if (in_array($this_file, $skipList) ||
+                !preg_match('/^backup-[0-9]{8}-[0-9]{6}(?:-[a-f0-9]{12})?\.sql$/D', $this_file) ||
+                !is_file($backup_path_prefix . '/' . $this_file)) {
                 continue;
             }
 
