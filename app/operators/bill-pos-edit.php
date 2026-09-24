@@ -39,106 +39,12 @@
 
 
     include('../common/includes/db_open.php');
+    require_once('../common/includes/pdo_connection.php');
+    require_once('library/pos_update.php');
 
 
-    function addPlanProfile($dbSocket, $username, $planName, $oldplanName) {
-
-        global $logDebugSQL;
-        global $configValues;
-
-        $sql = sprintf("DELETE FROM %s WHERE UserName='%s'",
-                       $configValues['CONFIG_DB_TBL_RADUSERGROUP'], $dbSocket->escapeSimple($username));
-        $res = $dbSocket->query($sql);
-        $logDebugSQL .= "$sql;\n";
-
-        // search to see if the plan is associated with any profiles
-        $sql = sprintf("SELECT profile_name FROM %s WHERE plan_name='%s'",
-                       $configValues['CONFIG_DB_TBL_DALOBILLINGPLANSPROFILES'], $dbSocket->escapeSimple($planName));
-
-        // $res is an array of all profiles associated with this plan
-        $cols = $dbSocket->getCol($sql);
-
-        // if the profile list for this plan isn't empty, we associate it with the user
-        if (count($cols) > 0) {
-
-            // if profiles are associated with this plan, loop through each and add a usergroup entry for each
-            foreach($cols as $profile_name) {
-                $priority = normalize_user_group_priority($profile_name, 0);
-                $sql = sprintf("INSERT INTO %s (username, groupname, priority) VALUES ('%s','%s',%d)",
-                               $configValues['CONFIG_DB_TBL_RADUSERGROUP'],
-                               $dbSocket->escapeSimple($username),
-                               $dbSocket->escapeSimple($profile_name), $priority);
-                $res = $dbSocket->query($sql);
-            }
-        }
-    }
-
-    function addUserProfiles($dbSocket, $username, $planName, $oldplanName, $groups, $groups_priority, $newgroups) {
-
-        global $logDebugSQL;
-        global $configValues;
-
-        // update usergroup mapping (existing)
-        if (is_array($groups) && count($groups) > 0) {
-
-            $sql = sprintf("DELETE FROM %s WHERE username='%s'",
-                           $configValues['CONFIG_DB_TBL_RADUSERGROUP'], $dbSocket->escapeSimple($username));
-            $res = $dbSocket->query($sql);
-            $logDebugSQL .= "$sql;\n";
-
-
-            $insert_group_format = "INSERT INTO %s (username, groupname, priority) VALUES ('%s', '%s', %s)";
-
-            foreach ($groups as $i => $group) {
-                $group = trim($group);
-
-                if (empty($group)) {
-                    continue;
-                }
-
-                $priority = (!empty($groups_priority[$i])) ? $groups_priority[$i] : "0";
-                $priority = normalize_user_group_priority($group, $priority);
-
-                $sql = sprintf($insert_group_format,
-                               $configValues['CONFIG_DB_TBL_RADUSERGROUP'],
-                               $dbSocket->escapeSimple($username),
-                               $dbSocket->escapeSimple($group),
-                               $dbSocket->escapeSimple($priority));
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-            }
-
-        }
-
-        // insert usergroup mapping (new groups)
-        if (is_array($newgroups) && count($newgroups) > 0) {
-            foreach ($newgroups as $newgroup) {
-                $newgroup = trim($newgroup);
-
-                if (empty($newgroup)) {
-                    continue;
-                }
-
-                $priority = normalize_user_group_priority($newgroup, 0);
-                $sql = sprintf($insert_group_format,
-                               $configValues['CONFIG_DB_TBL_RADUSERGROUP'],
-                               $dbSocket->escapeSimple($username),
-                               $dbSocket->escapeSimple($newgroup), $priority);
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-            }
-        }
-
-    }
-
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $username = (array_key_exists('username', $_POST) && !empty(str_replace("%", "", trim($_POST['username']))))
-                  ? str_replace("%", "", trim($_POST['username'])) : "";
-    } else {
-        $username = (array_key_exists('username', $_REQUEST) && !empty(str_replace("%", "", trim($_REQUEST['username']))))
-                  ? str_replace("%", "", trim($_REQUEST['username'])) : "";
-    }
+    $username_input = $_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['username'] ?? '') : ($_GET['username'] ?? '');
+    $username = is_string($username_input) ? trim($username_input) : '';
 
     // check if this user exists
     $exists = user_exists($dbSocket, $username);
@@ -161,10 +67,13 @@
             $current_datetime = date('Y-m-d H:i:s');
             $currBy = $operator;
 
-            $planName = (array_key_exists('planName', $_POST) && isset($_POST['planName'])) ? trim($_POST['planName']) : "";
-            $oldplanName = (array_key_exists('oldplanName', $_POST) && isset($_POST['oldplanName'])) ? trim($_POST['oldplanName']) : "";
+            $planName = $_POST['planName'] ?? '';
+            $planName = is_string($planName) ? trim($planName) : $planName;
+            $oldplanName = $_POST['oldplanName'] ?? '';
+            $oldplanName = is_string($oldplanName) ? trim($oldplanName) : $oldplanName;
             $profiles = (array_key_exists('profiles', $_POST) && isset($_POST['profiles'])) ? $_POST['profiles'] : array();
-            isset($_POST['reassignplanprofiles']) ? $reassignplanprofiles = $_POST['reassignplanprofiles'] : $reassignplanprofiles = "";
+            $reassignplanprofiles_input = $_POST['reassignplanprofiles'] ?? '';
+            $reassignplanprofiles = is_string($reassignplanprofiles_input) ? $reassignplanprofiles_input : '';
 
             isset($_POST['password']) ? $password = $_POST['password'] : $password = "";
             isset($_POST['passwordType']) ? $passwordtype = $_POST['passwordType'] : $passwordtype = "";
@@ -240,116 +149,53 @@
             $bi_emailinvoice = (array_key_exists('bi_emailinvoice', $_POST) && isset($_POST['bi_emailinvoice'])) ? $_POST['bi_emailinvoice'] : "";
 
             if (!empty($username) && $portal_access_valid) {
-
-                $userinfoExist = user_exists($dbSocket, $username, 'CONFIG_DB_TBL_DALOUSERINFO');
-                $params = array(
-                    'firstname' => $firstname,
-                    'lastname' => $lastname,
-                    'email' => $email,
-                    'department' => $department,
-                    'company' => $company,
-                    'workphone' => $workphone,
-                    'homephone' => $homephone,
-                    'mobilephone' => $mobilephone,
-                    'address' => $address,
-                    'city' => $city,
-                    'state' => $state,
-                    'country' => $country,
-                    'zip' => $zip,
-                    'notes' => $notes,
+                $userinfo = array(
+                    'firstname' => $firstname, 'lastname' => $lastname, 'email' => $email,
+                    'department' => $department, 'company' => $company,
+                    'workphone' => $workphone, 'homephone' => $homephone,
+                    'mobilephone' => $mobilephone, 'address' => $address,
+                    'city' => $city, 'state' => $state, 'country' => $country,
+                    'zip' => $zip, 'notes' => $notes,
                     'changeuserinfo' => $ui_changeuserinfo,
                     'portalloginpassword' => $ui_PortalLoginPassword,
                     'enableportallogin' => $ui_enableUserPortalLogin,
                 );
-
-                if ($userinfoExist) {
-                    $params['updatedate'] = $current_datetime;
-                    $params['updateby'] = $currBy;
-                    update_user_info($dbSocket, $username, $params);
-                } else {
-                    $params['creationdate'] = $current_datetime;
-                    $params['creationby'] = $currBy;
-                    add_user_info($dbSocket, $username, $params);
-                }
-
-
-                /* perform user billing info table instructions */
-                $sql = sprintf("SELECT COUNT(DISTINCT(username)) FROM %s WHERE username='%s'",
-                               $configValues['CONFIG_DB_TBL_DALOUSERBILLINFO'], $dbSocket->escapeSimple($username));
-                $res = $dbSocket->query($sql);
-                $userbillinfoExist = $res->fetchrow()[0];
-                $logDebugSQL .= "$sql;\n";
-
-                // if there were no records for this user present in the userbillinfo table
-                if (!$userbillinfoExist) {
-                    // insert user billing information table
-                    $sql = sprintf("INSERT INTO %s (id, username, contactperson, company, email, phone, address,
-                                                    city, state, country, zip, paymentmethod, cash, creditcardname,
-                                                    creditcardnumber, creditcardverification, creditcardtype,
-                                                    creditcardexp, notes, changeuserbillinfo, creationdate,
-                                                    creationby, updatedate, updateby)
-                                           VALUES (0, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
-                                                   '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
-                                                   NULL, NULL)", $configValues['CONFIG_DB_TBL_DALOUSERBILLINFO'],
-                                                                 $dbSocket->escapeSimple($username), $dbSocket->escapeSimple($bi_contactperson),
-                                                                 $dbSocket->escapeSimple($bi_company), $dbSocket->escapeSimple($bi_email),
-                                                                 $dbSocket->escapeSimple($bi_phone), $dbSocket->escapeSimple($bi_address),
-                                                                 $dbSocket->escapeSimple($bi_city), $dbSocket->escapeSimple($bi_state),
-                                                                 $dbSocket->escapeSimple($bi_country), $dbSocket->escapeSimple($bi_zip),
-                                                                 $dbSocket->escapeSimple($bi_paymentmethod), $dbSocket->escapeSimple($bi_cash),
-                                                                 $dbSocket->escapeSimple($bi_creditcardname),
-                                                                 $dbSocket->escapeSimple($bi_creditcardnumber),
-                                                                 $dbSocket->escapeSimple($bi_creditcardverification),
-                                                                 $dbSocket->escapeSimple($bi_creditcardtype),
-                                                                 $dbSocket->escapeSimple($bi_creditcardexp), $dbSocket->escapeSimple($bi_notes),
-                                                                 $dbSocket->escapeSimple($bi_changeuserbillinfo), $current_datetime, $currBy);
-                } else {
-                    // update user information table
-                    $sql = sprintf("UPDATE %s SET `contactperson`='%s', `planname`='%s', `company`='%s', `email`='%s', `phone`='%s',
-                                                  `paymentmethod`='%s', `cash`='%s', `creditcardname`='%s', `creditcardnumber`='%s',
-                                                  `creditcardverification`='%s', `creditcardtype`='%s', `creditcardexp`='%s', `address`='%s',
-                                                  `city`='%s', `state`='%s', `country`='%s', `zip`='%s', `notes`='%s', `changeuserbillinfo`='%s',
-                                                  `lead`='%s', `coupon`='%s', `ordertaker`='%s', `billstatus`='%s', `nextinvoicedue`='%s',
-                                                  `billdue`='%s', `postalinvoice`='%s', `faxinvoice`='%s', `emailinvoice`='%s', `updatedate`='%s',
-                                                  `updateby`='%s'
-                                            WHERE `username`='%s'", $configValues['CONFIG_DB_TBL_DALOUSERBILLINFO'], $dbSocket->escapeSimple($bi_contactperson),
-                                                                    $dbSocket->escapeSimple($planName), $dbSocket->escapeSimple($bi_company),
-                                                                    $dbSocket->escapeSimple($bi_email), $dbSocket->escapeSimple($bi_phone),
-                                                                    $dbSocket->escapeSimple($bi_paymentmethod), $dbSocket->escapeSimple($bi_cash),
-                                                                    $dbSocket->escapeSimple($bi_creditcardname), $dbSocket->escapeSimple($bi_creditcardnumber),
-                                                                    $dbSocket->escapeSimple($bi_creditcardverification), $dbSocket->escapeSimple($bi_creditcardtype),
-                                                                    $dbSocket->escapeSimple($bi_creditcardexp), $dbSocket->escapeSimple($bi_address),
-                                                                    $dbSocket->escapeSimple($bi_city), $dbSocket->escapeSimple($bi_state),
-                                                                    $dbSocket->escapeSimple($bi_country), $dbSocket->escapeSimple($bi_zip),
-                                                                    $dbSocket->escapeSimple($bi_notes), $dbSocket->escapeSimple($bi_changeuserbillinfo),
-                                                                    $dbSocket->escapeSimple($bi_lead), $dbSocket->escapeSimple($bi_coupon),
-                                                                    $dbSocket->escapeSimple($bi_ordertaker), $dbSocket->escapeSimple($bi_billstatus),
-                                                                    $dbSocket->escapeSimple($bi_nextinvoicedue), $dbSocket->escapeSimple($bi_billdue),
-                                                                    $dbSocket->escapeSimple($bi_postalinvoice), $dbSocket->escapeSimple($bi_faxinvoice),
-                                                                    $dbSocket->escapeSimple($bi_emailinvoice), $current_datetime, $currBy,
-                                                                    $dbSocket->escapeSimple($username));
-                }
-
-                // execute the insert/update onto userbillinfo
-                $res = $dbSocket->query($sql);
-                $logDebugSQL .= "$sql;\n";
-
-                if ($reassignplanprofiles == 1) {
-                    // if the user chose to re-assign profiles from the change of plan then we proceed with removing
-                    // all profiles associated with the user and re-assigning them based on the plan's profiles associations
-                    addPlanProfile($dbSocket, $username, $planName, $oldplanName);
-                } else {
-                    // otherwise, we remove all profiles and assign profiles as configured in the profiles tab by the user
-                    if (delete_user_group_mappings($dbSocket, $username)) {
-                        if (count($groups) > 0) {
-                            foreach ($groups as $group) {
-                                list($groupname, $priority) = $group;
-                                insert_single_user_group_mapping($dbSocket, $username, $groupname, $priority);
-                            }
-                        }
+                $billinfo = array(
+                    'contactperson' => $bi_contactperson, 'company' => $bi_company,
+                    'email' => $bi_email, 'phone' => $bi_phone,
+                    'address' => $bi_address, 'city' => $bi_city,
+                    'state' => $bi_state, 'country' => $bi_country,
+                    'zip' => $bi_zip, 'paymentmethod' => $bi_paymentmethod,
+                    'cash' => $bi_cash, 'creditcardname' => $bi_creditcardname,
+                    'creditcardnumber' => $bi_creditcardnumber,
+                    'creditcardverification' => $bi_creditcardverification,
+                    'creditcardtype' => $bi_creditcardtype,
+                    'creditcardexp' => $bi_creditcardexp, 'notes' => $bi_notes,
+                    'changeuserbillinfo' => $bi_changeuserbillinfo,
+                    'lead' => $bi_lead, 'coupon' => $bi_coupon,
+                    'ordertaker' => $bi_ordertaker, 'billstatus' => $bi_billstatus,
+                    'nextinvoicedue' => $bi_nextinvoicedue, 'billdue' => $bi_billdue,
+                    'postalinvoice' => $bi_postalinvoice, 'faxinvoice' => $bi_faxinvoice,
+                    'emailinvoice' => $bi_emailinvoice,
+                );
+                try {
+                    if (!is_string($planName) || !is_array($groups) ||
+                        !is_string($ui_PortalLoginPassword) ||
+                        !is_string($oldplanName) || !is_string($reassignplanprofiles_input)) {
+                        throw new InvalidArgumentException('Invalid POS edit request');
                     }
+                    $pdo = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+                    dalo_pos_update($pdo, $configValues, $username, $planName,
+                        (string)$reassignplanprofiles === '1', $groups, $userinfo,
+                        $billinfo, $current_datetime, $currBy);
+                    $successMsg = 'Updated user information';
+                    $logAction .= 'Updated POS user on page: ';
+                    $logDebugSQL .= 'POS user, billing and profile update (PDO transaction);\n';
+                } catch (Throwable $error) {
+                    $failureMsg = 'Failed to update user information';
+                    $logAction .= 'Failed POS user update on page: ';
+                    error_log('POS edit failed (' . get_class($error) . ')');
                 }
-
             }
 
         } else {
