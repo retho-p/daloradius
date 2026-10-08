@@ -784,15 +784,12 @@ daloradius_load_sql_schema() {
         exit 1
     fi
 
-    for f in "${DB_DIR}"/migrations/*.sql; do
-        [ -e "$f" ] || continue
-
-        if ! mariadb --defaults-extra-file="${MARIADB_CLIENT_FILENAME}" < "$f" >/dev/null 2>&1; then
-            print_red "KO"
-            print_red "[!] Failed to load daloRADIUS migration schema ${f} into MariaDB. Aborting." >&2
-            exit 1
-        fi
-    done
+    if ! runuser -u www-data -- php "${DALORADIUS_ROOT_DIR}/contrib/scripts/maintenance/migrate-db.php" \
+        --config="${DALORADIUS_CONF_FILE}" --apply >/dev/null 2>&1; then
+        print_red "KO"
+        print_red "[!] Failed to apply daloRADIUS schema migrations. Aborting." >&2
+        exit 1
+    fi
 
     if ! mariadb --defaults-extra-file="${MARIADB_CLIENT_FILENAME}" < "${DB_DIR}/update-performance-indexes.sql" >/dev/null 2>&1; then
         print_red "KO"

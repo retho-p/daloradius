@@ -6,6 +6,7 @@ if (PHP_SAPI !== 'cli') {
 }
 $root = dirname(__DIR__, 3);
 $configFile = $root . '/app/common/includes/daloradius.conf.php';
+$migrationsDir = $root . '/contrib/db/migrations';
 $apply = false;
 $help = false;
 $colorMode = 'auto';
@@ -24,6 +25,8 @@ foreach (array_slice($argv, 1) as $arg) {
         $apply = true;
     } elseif (strpos($arg, '--config=') === 0) {
         $configFile = substr($arg, 9);
+    } elseif (strpos($arg, '--migrations-dir=') === 0) {
+        $migrationsDir = substr($arg, 17);
     } elseif ($arg === '--no-color') {
         $colorMode = 'never';
     } elseif (strpos($arg, '--color=') === 0) {
@@ -42,6 +45,7 @@ foreach (array_slice($argv, 1) as $arg) {
 }
 if ($help) {
     $output("Usage: php migrate-db.php [--apply] [--config=/path/to/daloradius.conf.php]\n"
+        . "                         [--migrations-dir=/path/to/migrations]\n"
         . "                         [--color=auto|always|never] [--no-color]\n"
         . 'Default: read-only preview. Back up your database before --apply.');
     exit(0);
@@ -97,7 +101,10 @@ try {
             throw new RuntimeException('Required daloRADIUS table or columns missing: ' . $table . '. No migrations started.');
         }
     }
-    $files = glob($root . '/contrib/db/migrations/*.sql');
+    if (!is_dir($migrationsDir) || !is_readable($migrationsDir)) {
+        throw new RuntimeException('Migration directory is unavailable.');
+    }
+    $files = glob(rtrim($migrationsDir, '/') . '/*.sql');
     sort($files, SORT_STRING);
     if (!$files) {
         throw new RuntimeException('No bundled migrations found.');
@@ -105,6 +112,9 @@ try {
     // Read all inputs before any write; only execute trusted repository SQL.
     $scripts = array();
     foreach ($files as $file) {
+        if (!preg_match('/\A[A-Za-z0-9._-]+\.sql\z/D', basename($file))) {
+            throw new RuntimeException('Invalid migration filename.');
+        }
         $sql = file_get_contents($file);
         if ($sql === false || trim($sql) === '') {
             throw new RuntimeException('Unreadable or empty migration.');
@@ -119,10 +129,31 @@ try {
     }
     $exists = (int) $db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='daloradius_schema_migrations'")->fetch_row()[0] === 1;
     $history = array();
+    $legacyChecksum = false;
+    $legacyStatus = false;
+    $legacyNames = array();
     if ($exists) {
-        $result = $db->query('SELECT filename, checksum, status FROM daloradius_schema_migrations');
+        $columns = $db->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='daloradius_schema_migrations'")->fetch_all(MYSQLI_NUM);
+        $columns = array_column($columns, 0);
+        $legacyChecksum = !in_array('checksum', $columns, true) && in_array('sha256', $columns, true);
+        $legacyStatus = !in_array('status', $columns, true);
+        if (!in_array('filename', $columns, true) || !in_array('applied_at', $columns, true)
+            || (!$legacyChecksum && !in_array('checksum', $columns, true))) {
+            throw new RuntimeException('Unknown migration history layout.');
+        }
+        $result = $db->query('SELECT filename, ' . ($legacyChecksum ? 'sha256' : 'checksum')
+            . ' AS checksum, ' . ($legacyStatus ? "'applied'" : 'status') . ' AS status FROM daloradius_schema_migrations');
         while ($row = $result->fetch_assoc()) {
-            $history[$row['filename']] = $row;
+            $original = $row['filename'];
+            $name = strpos($original, 'contrib/db/migrations/') === 0 ? substr($original, 22) : $original;
+            if (!preg_match('/\A[A-Za-z0-9._-]+\.sql\z/D', $name) || isset($history[$name])) {
+                throw new RuntimeException('Invalid or duplicate migration history identity.');
+            }
+            if ($original !== $name) {
+                $legacyNames[$original] = $name;
+            }
+            $row['filename'] = $name;
+            $history[$name] = $row;
         }
     }
     // Validate the complete history before starting any pending migration.
@@ -140,6 +171,19 @@ try {
     }
     if ($apply) {
         $writesStarted = true;
+        // Adopt the former Bash helper's ledger. Validate all checksums first;
+        // each intermediate layout remains recognizable after interruption.
+        if ($legacyChecksum) {
+            $db->query('ALTER TABLE daloradius_schema_migrations CHANGE COLUMN sha256 checksum CHAR(64) NOT NULL');
+        }
+        if ($exists && $legacyStatus) {
+            $db->query("ALTER TABLE daloradius_schema_migrations ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'applied'");
+        }
+        foreach ($legacyNames as $oldName => $newName) {
+            $rename = $db->prepare('UPDATE daloradius_schema_migrations SET filename=? WHERE filename=?');
+            $rename->bind_param('ss', $newName, $oldName);
+            $rename->execute();
+        }
         $db->query("CREATE TABLE IF NOT EXISTS daloradius_schema_migrations (filename VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY, checksum CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, status VARCHAR(16) NOT NULL, applied_at DATETIME NULL) ENGINE=InnoDB");
         $db->query("SET SESSION sql_mode = CONCAT_WS(',', NULLIF(@@sql_mode,''), 'STRICT_ALL_TABLES')");
     }

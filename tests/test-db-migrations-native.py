@@ -152,6 +152,24 @@ INSERT INTO operators_acl VALUES(1,'rep_username',1);
         assert result.returncode == 0 and result.stdout.count('SKIP ') == 7, result.stderr
         assert snapshot() == before
         print('PASS repeat run / exact database unchanged', flush=True)
+        # Adopt the original Bash upgrader's sha256/full-path ledger, without
+        # replaying SQL or assuming it is compatible by table name alone.
+        rows = sql('SELECT filename,checksum FROM daloradius_schema_migrations ORDER BY filename;', NAME).splitlines()
+        sql('DROP TABLE daloradius_schema_migrations; CREATE TABLE daloradius_schema_migrations(filename VARCHAR(255) PRIMARY KEY,sha256 CHAR(64) NOT NULL,applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);', NAME)
+        for row in rows:
+            filename, checksum = row.split('\t')
+            sql("INSERT INTO daloradius_schema_migrations(filename,sha256) VALUES('contrib/db/migrations/" + filename + "','" + checksum + "');", NAME)
+        before = snapshot()
+        result = invoke()
+        assert result.returncode == 0 and result.stdout.count('SKIP ') == 7, result.stderr
+        assert snapshot() == before
+        result = invoke('--apply')
+        assert result.returncode == 0 and result.stdout.count('SKIP ') == 7, result.stderr
+        assert sql("SELECT COUNT(*) FROM daloradius_schema_migrations WHERE status='applied' AND filename NOT LIKE '%/%';", NAME).strip() == '7'
+        print('PASS legacy Bash ledger / read-only preview / checksum-verified adoption', flush=True)
+        # Explicit target directory uses the same checked-in SQL and history.
+        result = invoke('--migrations-dir=' + str(ROOT / 'contrib/db/migrations'))
+        assert result.returncode == 0 and result.stdout.count('SKIP ') == 7, result.stderr
         reset()
         sql((ROOT / 'contrib/db/fr3-mariadb-freeradius.sql').read_text(), NAME)
         sql((ROOT / 'contrib/db/mariadb-daloradius.sql').read_text(), NAME)
