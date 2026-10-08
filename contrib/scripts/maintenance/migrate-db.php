@@ -22,6 +22,7 @@ foreach (array_slice($argv, 1) as $arg) {
 }
 $db = null;
 $locked = false;
+$writesStarted = false;
 $current = 'preflight';
 try {
     if (!extension_loaded('mysqli') || !is_readable($configFile)) {
@@ -46,6 +47,29 @@ try {
     $version = $db->query('SELECT VERSION()')->fetch_row()[0];
     if (stripos($version, 'MariaDB') === false) {
         throw new RuntimeException('The bundled SQL is MariaDB-specific; MySQL is not supported.');
+    }
+    // Reject a wrong/incomplete installation before history creation or DDL.
+    // This does not make subsequent DDL transactional or predict every error.
+    $requiredColumns = array(
+        'operators' => array('id', 'username', 'password'),
+        'operators_acl' => array('operator_id', 'file', 'access'),
+        'operators_acl_files' => array('file', 'category', 'section'),
+        'userinfo' => array('portalloginpassword'),
+    );
+    $metadata = $db->query("SELECT c.TABLE_NAME, c.COLUMN_NAME
+        FROM information_schema.COLUMNS c JOIN information_schema.TABLES t
+          ON t.TABLE_SCHEMA=c.TABLE_SCHEMA AND t.TABLE_NAME=c.TABLE_NAME
+        WHERE c.TABLE_SCHEMA=DATABASE() AND t.TABLE_TYPE='BASE TABLE'
+          AND c.TABLE_NAME IN ('operators','operators_acl','operators_acl_files','userinfo')");
+    $present = array();
+    while ($column = $metadata->fetch_assoc()) {
+        $present[$column['TABLE_NAME']][] = $column['COLUMN_NAME'];
+    }
+    $metadata->free();
+    foreach ($requiredColumns as $table => $columns) {
+        if (array_diff($columns, $present[$table] ?? array())) {
+            throw new RuntimeException('Required daloRADIUS table or columns missing: ' . $table . '. No migrations started.');
+        }
     }
     $files = glob($root . '/contrib/db/migrations/*.sql');
     sort($files, SORT_STRING);
@@ -82,6 +106,7 @@ try {
         }
     }
     if ($apply) {
+        $writesStarted = true;
         $db->query("CREATE TABLE IF NOT EXISTS daloradius_schema_migrations (filename VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY, checksum CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, status VARCHAR(16) NOT NULL, applied_at DATETIME NULL) ENGINE=InnoDB");
         $db->query("SET SESSION sql_mode = CONCAT_WS(',', NULLIF(@@sql_mode,''), 'STRICT_ALL_TABLES')");
     }
@@ -127,7 +152,10 @@ try {
 } catch (Throwable $error) {
     // Driver errors can contain data; do not print exception messages.
     $message = $error instanceof mysqli_sql_exception ? 'Database operation failed (code ' . $error->getCode() . ').' : $error->getMessage();
-    fwrite(STDERR, "Stopped at $current: $message\nDDL may already be committed. Do not retry an interrupted migration without inspection.\n");
+    fwrite(STDERR, "Stopped at $current: $message\n");
+    fwrite(STDERR, $writesStarted
+        ? "DDL may already be committed. Do not retry an interrupted migration without inspection.\n"
+        : "No migration writes were started.\n");
     exit(1);
 } finally {
     if ($db !== null) {

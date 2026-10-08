@@ -17,7 +17,10 @@ the command line. Run as an account allowed to read the application configuratio
 
 Requirements: PHP CLI with mysqli, MariaDB, standard table names and database
 privileges required by the bundled SQL (SELECT/INSERT/UPDATE/DELETE/CREATE/ALTER
-and indexes). These migrations are **not MySQL/PostgreSQL-compatible**. Named
+and indexes). Before writing, the runner checks that the required standard
+application tables and key columns exist; a missing table/column is refused
+without creating history or starting DDL. This does not predict all later SQL
+failures. These migrations are **not MySQL/PostgreSQL-compatible**. Named
 locations are not selected automatically: migrate each database using its own
 configuration. Keep this script and SQL files from the same checkout.
 
@@ -64,3 +67,16 @@ using the installed application's database. Override `DALORADIUS_TEST_PHP_IMAGE`
 if needed with an image containing PHP CLI and mysqli. No ports are published.
 It verifies preview, upgrade, repeat execution, data preservation, current
 schema with LDAP NULL passwords, history checks, and a real late SQL failure.
+
+For a native Debian/MariaDB installation, an additional suite runs without
+Docker (requires local MariaDB root socket access and PHP CLI/mysqli):
+
+```sh
+sudo python3 tests/test-db-migrations-native.py
+```
+
+It creates and removes uniquely named test databases and a SELECT-only test
+account. It does not use the application's database. This suite also exercises
+real advisory-lock contention, permission failures, incomplete-schema preflight,
+and explicit manual recovery after a partial migration. Schema checks reduce
+obvious failures but do not make DDL atomic.

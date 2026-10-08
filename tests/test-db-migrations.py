@@ -84,6 +84,18 @@ INSERT INTO operators_acl VALUES(1,'rep_username',1);
         print('PASS interrupted history rejected')
         # Native late SQL error: first statement commits, second fails.
         sql('DROP DATABASE fixture; CREATE DATABASE fixture; USE fixture; CREATE TABLE operators(id INT, password VARCHAR(32));')
+        before = sql('SHOW CREATE TABLE operators;')
+        result = invoke('--apply')
+        assert result.returncode != 0 and 'No migrations started' in result.stderr
+        assert sql('SHOW CREATE TABLE operators;') == before
+        assert sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='daloradius_schema_migrations';").strip() == '0'
+        print('PASS incomplete schema rejected before any DDL or history writes')
+        sql("""ALTER TABLE operators ADD username VARCHAR(128);
+CREATE TABLE operators_acl_files(file VARCHAR(128), category VARCHAR(128), section VARCHAR(128));
+CREATE TABLE operators_acl(operator_id INT, file VARCHAR(128), access INT);
+CREATE TABLE userinfo(portalloginpassword VARCHAR(32));
+CREATE TRIGGER fail_mfa BEFORE INSERT ON operators_acl_files FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture late failure';
+""")
         result = invoke('--apply')
         assert result.returncode != 0
         assert sql("SELECT status FROM daloradius_schema_migrations WHERE filename='2026-06-operator-totp-mfa.sql';").strip() == 'running'
