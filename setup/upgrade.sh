@@ -68,7 +68,7 @@ Options:
   -h, --help              Show this help.
 
 An explicitly supplied MariaDB option file must contain a [client] section with credentials and
-an explicit database= value. It must be owned by root and not readable by the
+connection settings for the application database. It must be owned by root and not readable by the
 group or other users.
 
 Examples:
@@ -125,6 +125,7 @@ rollback_changes() {
     fi
 
     if [[ "$MIGRATIONS_STARTED" == true ]]; then
+        systemctl stop apache2 freeradius || warn "Could not stop all application writers."
         warn "Application writers remain stopped. Repair or restore the database, then start Apache/FreeRADIUS."
         return
     fi
@@ -342,7 +343,7 @@ prepare_client_config() {
         runuser -u www-data -- php -d display_errors=0 -r '
             require $argv[1];
             $mapping = ["host"=>"CONFIG_DB_HOST", "port"=>"CONFIG_DB_PORT", "user"=>"CONFIG_DB_USER",
-                        "password"=>"CONFIG_DB_PASS", "database"=>"CONFIG_DB_NAME"];
+                        "password"=>"CONFIG_DB_PASS"];
             echo "[client]\n";
             foreach ($mapping as $option=>$key) {
                 $value = (string)($configValues[$key] ?? ($option === "port" ? "3306" : ""));
@@ -361,7 +362,8 @@ prepare_client_config() {
 
 validate_database() {
     local database configured
-    database=$(mariadb --defaults-extra-file="$DB_CONFIG" --batch --skip-column-names --execute='SELECT DATABASE();' 2>/dev/null) ||
+    configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
+    database=$(mariadb --defaults-extra-file="$DB_CONFIG" --database="$configured" --batch --skip-column-names --execute='SELECT DATABASE();' 2>/dev/null) ||
         fail "Could not connect to MariaDB."
     configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
     [[ -n "$database" && "$database" != NULL && "$database" == "$configured" ]] ||
@@ -391,7 +393,7 @@ prepare_backup() {
     TMP_FILES+=("$dump.tmp")
     log "Creating database backup: $dump"
     mariadb-dump --defaults-extra-file="$DB_CONFIG" \
-        --single-transaction --quick --routines --events --triggers > "$dump.tmp"
+        --single-transaction --quick --routines --events --triggers "$DB_NAME" > "$dump.tmp"
     [[ -s "$dump.tmp" ]] || fail "Database backup is empty."
     mv -- "$dump.tmp" "$dump"
     chmod 600 -- "$dump"
@@ -407,7 +409,7 @@ prepare_backup() {
         printf 'target_commit=%s\n' "$TARGET_COMMIT"
         printf 'created_at_utc=%s\n' "$(date -u +%FT%TZ)"
     } > "$config_meta"
-    chmod 600 -- "$config_meta" "$BACKUP_DIR/daloradius.conf.php"
+    chmod 600 -- "$config_meta"
 
     (
         cd "$BACKUP_DIR"
