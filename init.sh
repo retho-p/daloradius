@@ -3,6 +3,13 @@
 # GitHub: git@github.com:lirantal/daloradius.git
 set -euo pipefail
 
+MIGRATE_ONLY=false
+case "${1:-}" in
+    "") [[ $# -eq 0 ]] || { echo "Unexpected arguments." >&2; exit 2; } ;;
+    --migrate-only) [[ $# -eq 1 ]] || { echo "Unexpected arguments." >&2; exit 2; }; MIGRATE_ONLY=true ;;
+    *) echo "Usage: init.sh [--migrate-only]" >&2; exit 2 ;;
+esac
+
 DALORADIUS_PATH=/var/www/daloradius
 DALORADIUS_CONF_PATH=/var/www/daloradius/app/common/includes/daloradius.conf.php
 
@@ -300,6 +307,10 @@ else
 fi
 
 run_schema_migrations
+if [[ "$MIGRATE_ONLY" == true ]]; then
+    echo "Schema migration completed; application services were not started."
+    exit 0
+fi
 
 # Start Apache2 in the foreground
 cleanup_mysql_defaults

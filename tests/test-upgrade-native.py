@@ -52,6 +52,7 @@ try:
     TARGET = checked(['git', '-C', ROOT, 'rev-parse', 'HEAD']).strip()
     BASE = checked(['git', '-C', ROOT, 'merge-base', 'HEAD', 'upstream/master']).strip()
     checked(['git', '-C', REMOTE, 'update-ref', 'refs/heads/candidate', TARGET])
+    checked(['git', '-C', REMOTE, 'update-ref', 'refs/tags/fixture-release', TARGET])
     checked(['git', 'clone', REMOTE, APP])
     checked(['git', '-C', APP, 'config', 'user.name', 'Upgrade fixture'])
     checked(['git', '-C', APP, 'config', 'user.email', 'fixture@example.invalid'])
@@ -76,16 +77,17 @@ try:
     assert dirty.read_text() == 'keep' and snapshot() == initial
     dirty.unlink()
     print('PASS dirty checkout refused without changes', flush=True)
-    lock = subprocess.Popen(['flock', '/run/lock/daloradius-upgrade.lock', 'sleep', '60'])
+    lock = subprocess.Popen(['flock', '/run/lock/daloradius-upgrade.lock', 'sleep', '60'], start_new_session=True)
     import time
     time.sleep(0.2)
     try:
         r = invoke('--check')
         assert r.returncode != 0 and 'already running' in r.stderr
     finally:
-        lock.terminate(); lock.wait()
+        import signal
+        os.killpg(lock.pid, signal.SIGTERM); lock.wait()
     print('PASS native host upgrade-lock contention', flush=True)
-    r = invoke('--apply')
+    r = invoke('--apply', '--ref', 'fixture-release')
     assert r.returncode == 0, r.stderr + r.stdout
     assert checked(['git', '-C', APP, 'rev-parse', 'HEAD']).strip() == TARGET
     assert service_state() == before_services
@@ -111,9 +113,28 @@ try:
     assert r.returncode != 0 and 'not a fast-forward' in r.stderr
     assert snapshot() == upgraded and service_state() == before_services
     print('PASS downgrade refused before stopping writers', flush=True)
+    # Execute the installer's real schema-loading function, not a copied SQL loop.
+    # Other installer functions (OS packages/services/config) are not called.
+    sql('DROP DATABASE `' + NAME + '`; CREATE DATABASE `' + NAME + '`;')
+    with tempfile.TemporaryDirectory(prefix=NAME, dir='/root') as work:
+        client = pathlib.Path(work) / 'client.cnf'
+        client.write_text('[client]\nuser=root\ndatabase=' + NAME + '\n')
+        client.chmod(0o600)
+        loader = pathlib.Path(work) / 'installer-schema.sh'
+        import shlex
+        code = (ROOT / 'setup/install.sh').read_text().split('# Parsing command line options')[0]
+        code += '\nDALORADIUS_ROOT_DIR=' + shlex.quote(str(ROOT))
+        code += '\nDALORADIUS_CONF_FILE=' + shlex.quote(str(conf))
+        code += '\nMARIADB_CLIENT_FILENAME=' + shlex.quote(str(client))
+        code += '\ndaloradius_load_sql_schema\n'
+        loader.write_text(code)
+        checked(['bash', loader])
+    assert sql("SELECT COUNT(*) FROM daloradius_schema_migrations WHERE status='applied';", NAME).strip() == '7'
+    assert int(sql('SELECT COUNT(*) FROM dictionary;', NAME).strip()) > 0
+    print('PASS install.sh actual fresh schema function / dictionaries+indexes / shared ledger', flush=True)
     # Late DDL error through the same native runner and real service control.
     baseline()
-    sql("DELETE FROM operators_acl_files WHERE file='config_operator_mfa'; CREATE TRIGGER fixture_fail BEFORE INSERT ON operators_acl_files FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture failure';", NAME)
+    sql("DELETE FROM operators_acl_files WHERE file='config_operator_2fa'; CREATE TRIGGER fixture_fail BEFORE INSERT ON operators_acl_files FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture failure';", NAME)
     r = invoke('--apply')
     assert r.returncode != 0, r.stdout
     assert service_state() == ('inactive', 'inactive')
