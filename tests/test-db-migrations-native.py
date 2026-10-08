@@ -6,6 +6,7 @@ Only uniquely named disposable databases/accounts are created and removed.
 """
 import os
 import pathlib
+import pty
 import secrets
 import subprocess
 import tempfile
@@ -45,8 +46,31 @@ with tempfile.TemporaryDirectory(prefix=NAME + '-', dir=os.environ.get('TMPDIR',
         config.write_text("<?php $configValues = ['CONFIG_DB_ENGINE'=>'mysqli','CONFIG_DB_HOST'=>'localhost','CONFIG_DB_USER'=>'" + user + "','CONFIG_DB_PASS'=>'" + password + "','CONFIG_DB_NAME'=>'" + NAME + "'];")
         config.chmod(0o600)
     configure()
-    def invoke(*args):
-        return run(['php', str(SCRIPT), '--config=' + str(config), *args])
+    def invoke(*args, env=None):
+        return run(['php', str(SCRIPT), '--config=' + str(config), *args], env=env)
+    def tty_invoke(*args, env=None, error=False):
+        master, slave = pty.openpty()
+        try:
+            result = subprocess.run(['php', str(SCRIPT), '--config=' + str(config), *args],
+                                    stdout=subprocess.PIPE if error else slave,
+                                    stderr=slave if error else subprocess.PIPE,
+                                    env=env)
+            os.close(slave)
+            slave = None
+            chunks = []
+            while True:
+                try:
+                    chunk = os.read(master, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            return result, b''.join(chunks).decode()
+        finally:
+            os.close(master)
+            if slave is not None:
+                os.close(slave)
     try:
         reset()
         sql("""CREATE TABLE operators (id INT PRIMARY KEY, username VARCHAR(128), password VARCHAR(32) NOT NULL);
@@ -63,6 +87,26 @@ INSERT INTO operators_acl VALUES(1,'rep_username',1);
         assert result.returncode == 0 and result.stdout.count('PENDING ') == 7, result.stderr
         assert snapshot() == before
         print('PASS native read-only preview / exact schema and data unchanged', flush=True)
+        assert '\x1b[' not in result.stdout and '\x1b[' not in result.stderr
+        assert '0 applied, 0 already satisfied, 0 skipped, 7 pending' in result.stdout
+        assert 'Pending means unrecorded' in result.stdout
+        assert '\x1b[' in invoke('--color=always').stdout
+        assert '\x1b[' not in invoke('--color=always', '--no-color').stdout
+        assert invoke('--color=invalid').returncode == 2
+        env = dict(os.environ, TERM='xterm')
+        env.pop('NO_COLOR', None)
+        result, text = tty_invoke('--help', env=env)
+        assert result.returncode == 0 and '\x1b[' in text
+        result, text = tty_invoke('--help', env=dict(env, NO_COLOR='1'))
+        assert result.returncode == 0 and '\x1b[' not in text
+        result, text = tty_invoke('--help', env=dict(env, TERM='dumb'))
+        assert result.returncode == 0 and '\x1b[' not in text
+        result, text = tty_invoke('--help', '--no-color', env=env)
+        assert result.returncode == 0 and '\x1b[' not in text
+        result, text = tty_invoke('--unknown', env=env, error=True)
+        assert result.returncode == 2 and '\x1b[31m' in text
+        assert snapshot() == before
+        print('PASS ANSI colors / real TTY / pipes / NO_COLOR / TERM=dumb / stderr / summary', flush=True)
         # A real independent connection holds the same advisory lock.
         holder = subprocess.Popen(['mariadb', '-uroot', '-N', '-B', NAME], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -122,6 +166,46 @@ INSERT INTO operators_acl VALUES(1,'rep_username',1);
         assert result.returncode != 0 and 'history differs' in result.stderr
         assert snapshot() == before
         print('PASS history checksum drift rejected before writes', flush=True)
+        # Historical manual application with no runner history: all seven SQL
+        # files were executed, then the runner adopts them without duplicates.
+        reset()
+        sql((ROOT / 'contrib/db/fr3-mariadb-freeradius.sql').read_text(), NAME)
+        sql((ROOT / 'contrib/db/mariadb-daloradius.sql').read_text(), NAME)
+        migrations = sorted((ROOT / 'contrib/db/migrations').glob('*.sql'))
+        for migration in migrations:
+            sql(migration.read_text(), NAME)
+        sql("UPDATE operators SET auth_source='ldap',password=NULL WHERE id=(SELECT minid FROM (SELECT MIN(id) minid FROM operators) x);", NAME)
+        sql("UPDATE operators_acl SET access=0 WHERE file='config_mail_settings';", NAME)
+        preserved = sql('SELECT * FROM operators ORDER BY id;', NAME)
+        catalog = sql('SELECT * FROM operators_acl_files ORDER BY id;', NAME)
+        grants = sql('SELECT * FROM operators_acl ORDER BY id;', NAME)
+        assert sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='daloradius_schema_migrations';", NAME).strip() == '0'
+        result = invoke('--apply')
+        assert result.returncode == 0 and result.stdout.count('SATISFIED ') == 1 and result.stdout.count('APPLIED ') == 6, result.stderr
+        assert sql('SELECT * FROM operators ORDER BY id;', NAME) == preserved
+        assert sql('SELECT * FROM operators_acl_files ORDER BY id;', NAME) == catalog
+        assert sql('SELECT * FROM operators_acl ORDER BY id;', NAME) == grants
+        assert invoke('--apply').stdout.count('SKIP ') == 7
+        print('PASS all migrations manually applied before runner / LDAP NULL / ACL values / no duplicates', flush=True)
+        # A genuinely older schema with only the first two files applied by hand.
+        reset()
+        sql("""CREATE TABLE operators(id INT PRIMARY KEY,username VARCHAR(128),password VARCHAR(32) NOT NULL);
+CREATE TABLE operators_acl_files(file VARCHAR(128),category VARCHAR(128),section VARCHAR(128));
+CREATE TABLE operators_acl(operator_id INT,file VARCHAR(128),access INT);
+CREATE TABLE userinfo(id INT PRIMARY KEY,portalloginpassword VARCHAR(32));
+INSERT INTO operators VALUES(1,'administrator','keep-local'),(2,'custom-operator','keep-custom');
+INSERT INTO userinfo VALUES(1,'keep-portal');""", NAME)
+        for migration in migrations[:2]:
+            sql(migration.read_text(), NAME)
+        catalog = sql('SELECT COUNT(*) FROM operators_acl_files;', NAME).strip()
+        assert catalog == '1'
+        result = invoke('--apply')
+        assert result.returncode == 0 and result.stdout.count('SATISFIED ') == 1 and result.stdout.count('APPLIED ') == 6, result.stderr
+        assert sql("SELECT COUNT(*) FROM operators_acl_files WHERE file='config_operator_2fa';", NAME).strip() == '1'
+        assert sql('SELECT password FROM operators ORDER BY id;', NAME).splitlines() == ['keep-local', 'keep-custom']
+        assert sql('SELECT portalloginpassword FROM userinfo;', NAME).strip() == 'keep-portal'
+        assert sql("SELECT COUNT(*) FROM daloradius_schema_migrations WHERE status='applied';", NAME).strip() == '7'
+        print('PASS partially manually migrated legacy schema / missing changes applied / data preserved', flush=True)
         reset()
         sql('CREATE TABLE operators(id INT, password VARCHAR(32));', NAME)
         before = snapshot()

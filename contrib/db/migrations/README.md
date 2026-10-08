@@ -36,6 +36,43 @@ satisfied if the VARCHAR already has capacity 95 or greater, preserving LDAP
 NULL passwords. Existing password values are not hashed by this runner. Portal
 password conversion remains a separate maintenance task.
 
+## Terminal output
+
+Colors are automatic on interactive terminals: green for successful SQL,
+yellow for pending work/warnings, cyan for an already-satisfied requirement,
+gray for recorded migrations that are skipped, and red for errors. Text labels
+remain meaningful without colors. The header identifies preview/apply mode and
+the selected database; the final summary counts each status.
+
+Pipes and redirected output stay plain. Automatic colors also respect a
+nonempty `NO_COLOR` environment variable and `TERM=dumb`. Use `--no-color` or
+`--color=never` to disable colors explicitly. `--color=always` forces ANSI colors,
+even in a pipe or with `NO_COLOR`; `--color=auto` is the default. stdout and
+stderr are checked independently.
+
+## Existing installations upgraded manually
+
+The runner can be introduced after **all or some of the currently bundled SQL
+migrations were applied manually**. It cannot recover their execution history:
+without its own history rows, the preview reports `PENDING`, meaning *not
+recorded*, not proof that a schema change is missing.
+
+On the first `--apply`, unrecorded migrations are processed once. Apart from
+the operator-password widening check described above, their SQL is executed
+again using its idempotent guards, then recorded. `APPLIED` means the SQL was
+executed successfully, not necessarily that it changed a row or column.
+`SATISFIED` means the special widening requirement was already met and recorded
+without running its old NOT NULL statement. Later runs report `SKIP` for all
+successfully recorded migrations.
+
+Native tests cover both all-seven-manually-applied and partially-upgraded
+legacy databases without history, including retained LDAP NULL passwords,
+existing ACL choices and absence of duplicate ACL entries. This is not a
+guarantee for arbitrarily customized schemas, altered historical SQL or future
+non-idempotent migrations: keep a verified backup and use a maintenance window.
+The runner does not silently mark every migration as applied without processing
+it, and it has no force/baseline switch.
+
 ## Failure and recovery
 
 **MariaDB DDL commits implicitly: this is not an atomic upgrade or a rollback
