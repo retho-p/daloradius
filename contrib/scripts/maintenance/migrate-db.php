@@ -139,7 +139,6 @@ try {
         $output('No recorded history: SQL may have been applied manually. Pending means unrecorded, not necessarily missing.', 'warning');
     }
     if ($apply) {
-        $output('DDL is not atomic. Use a verified backup and a maintenance window.', 'warning');
         $writesStarted = true;
         $db->query("CREATE TABLE IF NOT EXISTS daloradius_schema_migrations (filename VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY, checksum CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, status VARCHAR(16) NOT NULL, applied_at DATETIME NULL) ENGINE=InnoDB");
         $db->query("SET SESSION sql_mode = CONCAT_WS(',', NULLIF(@@sql_mode,''), 'STRICT_ALL_TABLES')");
