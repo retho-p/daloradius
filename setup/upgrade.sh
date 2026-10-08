@@ -8,7 +8,8 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
 
-readonly SCRIPT_NAME="$(basename "$0")"
+SCRIPT_NAME="$(basename "$0")"
+readonly SCRIPT_NAME
 APP_ROOT="/var/www/daloradius"
 DB_CONFIG=""
 REMOTE="origin"
