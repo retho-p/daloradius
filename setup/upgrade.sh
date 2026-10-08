@@ -113,7 +113,7 @@ rollback_changes() {
     fi
 
     if [[ "$CODE_UPDATED" == true && -n "$CURRENT_COMMIT" ]]; then
-        if git -C "$APP_ROOT" reset --hard "$CURRENT_COMMIT" >/dev/null; then
+        if (umask 022; git -C "$APP_ROOT" reset --hard "$CURRENT_COMMIT" >/dev/null); then
             log "Restored application revision $CURRENT_COMMIT."
         else
             warn "Could not restore the previous Git revision; use the verified backup in $BACKUP_DIR."
@@ -569,7 +569,9 @@ apply_upgrade() {
     prepare_backup
     run_migrations
     CODE_UPDATED=true
-    git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null
+    # Repository files are public source; private umask 077 is for backups/config.
+    # Git creates replaced/new files using umask, so 077 would hide PHP from Apache.
+    (umask 022; git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null)
     merge_configuration
     apachectl configtest >/dev/null
     freeradius -XC > "$BACKUP_DIR/freeradius-config-check.log" 2>&1

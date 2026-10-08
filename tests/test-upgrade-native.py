@@ -91,6 +91,7 @@ try:
     assert r.returncode == 0, r.stderr + r.stdout
     assert checked(['git', '-C', APP, 'rev-parse', 'HEAD']).strip() == TARGET
     assert service_state() == before_services
+    checked(['runuser', '-u', 'www-data', '--', 'test', '-r', APP / 'contrib/scripts/maintenance/migrate-db.php'])
     assert sql("SELECT COUNT(*) FROM daloradius_schema_migrations WHERE status='applied';", NAME).strip() == '7'
     assert checked(['php', '-r', 'require $argv[1]; exit($configValues["FIXTURE_KEEP"] === "unchanged" && isset($configValues["CONFIG_DB_TBL_RADACCT"]) ? 0 : 1);', conf]) == ''
     assert conf.stat().st_mode & 0o777 == 0o600
@@ -123,12 +124,17 @@ try:
         loader = pathlib.Path(work) / 'installer-schema.sh'
         import shlex
         code = (ROOT / 'setup/install.sh').read_text().split('# Parsing command line options')[0]
-        code += '\nDALORADIUS_ROOT_DIR=' + shlex.quote(str(ROOT))
+        code += '\nDALORADIUS_ROOT_DIR=' + shlex.quote(str(APP))
         code += '\nDALORADIUS_CONF_FILE=' + shlex.quote(str(conf))
         code += '\nMARIADB_CLIENT_FILENAME=' + shlex.quote(str(client))
         code += '\ndaloradius_load_sql_schema\n'
         loader.write_text(code)
-        checked(['bash', loader])
+        result = run(['bash', loader])
+        if result.returncode:
+            probe = run(['runuser', '-u', 'www-data', '--', 'php', APP / 'contrib/scripts/maintenance/migrate-db.php', '--config=' + str(conf)])
+            target = APP / 'contrib/scripts/maintenance/migrate-db.php'
+            diagnostic = [(str(x), oct(x.stat().st_mode & 0o777), x.stat().st_uid, x.stat().st_gid) for x in (APP, APP/'contrib', APP/'contrib/scripts', target.parent, target) if x.exists()]
+            raise RuntimeError(result.stderr + probe.stdout + probe.stderr + str(diagnostic))
     assert sql("SELECT COUNT(*) FROM daloradius_schema_migrations WHERE status='applied';", NAME).strip() == '7'
     assert int(sql('SELECT COUNT(*) FROM dictionary;', NAME).strip()) > 0
     print('PASS install.sh actual fresh schema function / dictionaries+indexes / shared ledger', flush=True)

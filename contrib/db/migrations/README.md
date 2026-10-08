@@ -1,5 +1,8 @@
 # Applying bundled database migrations
 
+For application upgrades, see the [Debian/manual/Docker upgrade guide](../../../doc/setup/upgrade.md).
+The Debian upgrader, fresh installer and Docker entrypoint all use this runner.
+
 From the root of the **updated** daloRADIUS checkout:
 
 ```sh
@@ -23,6 +26,11 @@ without creating history or starting DDL. This does not predict all later SQL
 failures. These migrations are **not MySQL/PostgreSQL-compatible**. Named
 locations are not selected automatically: migrate each database using its own
 configuration. Keep this script and SQL files from the same checkout.
+The upgrader can select a staged target directory with
+`--migrations-dir=/absolute/path/to/migrations`; only trusted repository SQL may
+be selected. Existing records must still match the selected files and checksums.
+The former Bash upgrader ledger (`sha256` with repository-relative filenames)
+is validated and converted on `--apply`; preview leaves that ledger unchanged.
 
 The runner creates `daloradius_schema_migrations` in the selected database,
 records each filename and SHA-256 checksum, and skips successful migrations on
