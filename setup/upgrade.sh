@@ -423,7 +423,8 @@ prepare_backup() {
 
 fetch_target() {
     log "Fetching Git refs from $REMOTE."
-    git -C "$APP_ROOT" fetch --tags --prune -- "$REMOTE"
+    git -C "$APP_ROOT" fetch --tags --prune -- "$REMOTE" \
+        "+refs/heads/*:refs/remotes/$REMOTE/*"
     if git -C "$APP_ROOT" show-ref --verify --quiet "refs/remotes/$REMOTE/$TARGET_REF"; then
         TARGET_REF="$REMOTE/$TARGET_REF"
     fi

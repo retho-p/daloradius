@@ -62,6 +62,10 @@ try:
     conf.chmod(0o600)
     sql("CREATE USER '" + NAME + "'@'localhost' IDENTIFIED BY ''; GRANT ALL ON `" + NAME + "`.* TO '" + NAME + "'@'localhost';")
     baseline()
+    # A single-branch install must still fetch another selected remote branch.
+    remote_default = checked(['git', '-C', ROOT, 'symbolic-ref', '--short', 'HEAD']).strip()
+    checked(['git', '-C', APP, 'config', 'remote.origin.fetch', '+refs/heads/' + remote_default + ':refs/remotes/origin/' + remote_default])
+    checked(['git', '-C', APP, 'update-ref', '-d', 'refs/remotes/origin/candidate'])
     initial = snapshot()
     config_initial = conf.read_bytes()
     r = invoke('--check')
