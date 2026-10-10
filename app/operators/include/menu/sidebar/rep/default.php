@@ -144,6 +144,8 @@ $descriptors1[] = array( 'type' => 'form', 'title' => t('button','TopUser'), 'ac
                          'method' => 'GET', 'icon' => 'person-lines-fill', 'form_components' => $components, );
 
 $descriptors2 = array();
+$descriptors2[] = array('type'=>'link', 'label'=>t('reports_sessions','Title'),
+                       'href'=>'rep-sessions.php', 'icon'=>'list-columns');
 $descriptors2[] = array( 'type' => 'link', 'label' => t('button','History'),
                          'href' => 'rep-history.php', 'icon' => 'clock-history', );
 

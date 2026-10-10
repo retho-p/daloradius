@@ -2057,3 +2057,29 @@ $l['helpPage']['gismain'] = <<<EOF
 </ul>
 EOF;
 
+$l['submenu']['Session Explorer'] = 'Session Explorer';
+$l['reports_sessions'] = array(
+    'DemoNote'=>'DEMONSTRATION: all session records are synthetic. Recent accounting is refreshed artificially; this is not real NAS activity.',
+    'Title'=>'Session Explorer', 'Subtitle'=>'Inspect RADIUS accounting sessions without changing their history.',
+    'Refresh'=>'Refresh', 'Legacy'=>'Legacy online report', 'Export'=>'Export CSV', 'Filters'=>'Session filters',
+    'Username'=>'User', 'NAS'=>'NAS IP / name', 'NASName'=>'NAS name', 'IP'=>'Client IP', 'IPv6'=>'Client IPv6',
+    'Station'=>'Calling-Station-ID', 'CalledStation'=>'Called-Station-ID', 'Status'=>'Observation status',
+    'All'=>'All sessions', 'Recent'=>'Open · recent accounting', 'Stale'=>'Open · old accounting',
+    'Ended'=>'Ended', 'Unknown'=>'Open · freshness unknown', 'From'=>'Started from', 'Until'=>'Started until',
+    'Timezone'=>'Display / date-filter timezone', 'Rows'=>'Rows', 'Apply'=>'Apply filters', 'Reset'=>'Reset',
+    'PeriodNote'=>'Dates select sessions that started in the period (inclusive local calendar dates), not traffic exchanged during that period.',
+    'FreshnessNote'=>'An open accounting record is not proof of network presence. Old accounting means potentially orphaned, not confirmed disconnected.',
+    'Observed'=>'Observed at', 'Interval'=>'Configured expected interval (seconds)', 'OverrideNote'=>'Per-NAS overrides may apply; zero means unknown. These are reporting assumptions, not detected NAS settings.',
+    'NoUpdates'=>'Last-accounting timestamps are not available in this schema.', 'NotFound'=>'This session does not exist in the active search scope.',
+    'Detail'=>'Session detail', 'Close'=>'Close detail', 'RadiusID'=>'Acct-Session-Id', 'UniqueID'=>'Acct-Unique-Id',
+    'Port'=>'NAS port', 'PortType'=>'NAS port type', 'Started'=>'Started', 'Updated'=>'Last accounting',
+    'Stopped'=>'Stopped', 'Duration'=>'Recorded duration (seconds)', 'InputRaw'=>'NAS input counter (bytes)',
+    'OutputRaw'=>'NAS output counter (bytes)', 'Termination'=>'Termination cause', 'Threshold'=>'Freshness threshold (seconds)',
+    'NotCollected'=>'Not collected', 'CounterNote'=>'Counters cover the whole session. Input = received by the NAS from the client; output = sent by the NAS to the client. Not a rate or exact traffic for the selected dates. Check the NAS implementation.',
+    'Input'=>'NAS input', 'Output'=>'NAS output', 'Empty'=>'No sessions match these filters.', 'Total'=>'Matching sessions',
+    'Page'=>'Page', 'ReadOnly'=>'Read-only', 'Pagination'=>'Session pages', 'Previous'=>'Previous', 'Next'=>'Next',
+    'Investigate'=>'Investigate', 'Unavailable'=>'Session data is unavailable. No accounting records were changed.',
+    'InvalidFilters'=>'Invalid session filters. Check dates, timezone, IP address, sort and pagination.',
+    'MissingCapability'=>'This filter requires information that is not collected in this accounting schema.',
+    'ExportLimit'=>'Narrow the search to at most 10000 sessions before exporting. No partial export was generated.'
+);

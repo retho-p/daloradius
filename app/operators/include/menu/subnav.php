@@ -49,6 +49,7 @@ $subnav["config"] = array(
 
 // rep subnav elements
 $subnav["rep"] = array(
+                            'Session Explorer' => 'rep-sessions.php',
                             'General' => 'rep-main.php',
                             'Logs' => 'rep-logs.php',
                             'Status' => 'rep-stat.php',
