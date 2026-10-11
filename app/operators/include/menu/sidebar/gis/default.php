@@ -28,19 +28,24 @@ if (strpos($_SERVER['PHP_SELF'], '/include/menu/sidebar/gis/default.php') !== fa
 }
 
 // define descriptors
-$descriptors1 = array();
-$descriptors1[] = array( 'type' => 'link', 'label' => t('button','ViewMAP'), 'href' => 'gis-viewmap.php',
-                         'icon' => 'globe-europe-africa', );
-$descriptors1[] = array( 'type' => 'link', 'label' => t('button','EditMAP'), 'href' => 'gis-editmap.php',
-                         'icon' => 'geo-alt-fill', );
-
+$descriptors1 = array(
+    array('type' => 'link', 'label' => t('menu', 'Map'), 'href' => 'gis-main.php',
+          'icon' => 'globe-europe-africa'),
+);
+// Layout includes this sidebar inside a function; page permissions live globally.
+if (!isset($GLOBALS['gis_permissions']) || $GLOBALS['gis_permissions']['edit']) {
+    $descriptors1[] = array(
+        'type' => 'link', 'label' => t('gis', 'legacyEdit'), 'href' => 'gis-editmap.php',
+        'icon' => 'geo-alt-fill',
+    );
+}
 
 $sections = array();
-$sections[] = array( 'title' => t('sidebar', 'GISMapping'), 'descriptors' => $descriptors1 );
+$sections[] = array( 'title' => t('gis', 'title'), 'descriptors' => $descriptors1 );
 
 
 // add sections to menu
 $menu = array(
-                'title' => t('sidebar', 'GIS'),
+                'title' => t('gis', 'title'),
                 'sections' => $sections,
              );

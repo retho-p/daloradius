@@ -2057,3 +2057,39 @@ $l['helpPage']['gismain'] = <<<EOF
 </ul>
 EOF;
 
+$l['menu']['Map'] = 'Map';
+$l['gis'] = array(
+    'title' => 'Map',
+    'search' => 'Search by hotspot name or MAC/IP',
+    'filter' => 'Location',
+    'all' => 'All hotspots',
+    'located' => 'Located',
+    'missing' => 'Not located',
+    'invalid' => 'Invalid coordinates',
+    'fit' => 'Fit results',
+    'inventory' => 'Hotspots',
+    'details' => 'Selected hotspot',
+    'name' => 'Name',
+    'mac' => 'MAC / IP address',
+    'position' => 'Coordinates',
+    'accounting' => 'Accounting',
+    'compare' => 'Compare hotspots',
+    'pages' => 'Hotspot list pages',
+    'previous' => 'Previous',
+    'next' => 'Next',
+    'select' => 'Select a hotspot on the map or in the list to view its details.',
+    'empty' => 'No hotspots are configured for this location.',
+    'noResults' => 'No hotspots match your search and filter.',
+    'noPosition' => 'This hotspot has no map position. It remains available in the inventory.',
+    'invalidPosition' => 'The stored coordinates are invalid. This hotspot is not displayed on the map.',
+    'mapError' => 'The map could not be initialized. You can still search and consult the hotspot inventory.',
+    'tileError' => 'Some map tiles could not be loaded. Hotspot markers and the inventory remain available.',
+    'loadError' => 'Unable to load the hotspot inventory. Try again later.',
+    'results' => '{count} / {total} hotspots · {located} on map',
+    'unnamed' => 'Unnamed hotspot',
+    'readOnly' => 'This page is read-only. Location changes are still available in the legacy editor.',
+    'legacyEdit' => 'Edit Map (legacy)',
+    'noJavascript' => 'Enable JavaScript to use the interactive map and hotspot inventory.',
+    'help' => '<p>Search hotspots by name or MAC/IP address, filter their location status, and select a marker or list entry to view details.</p><p>Hotspots without valid coordinates remain visible in the inventory. Fit results frames the mapped hotspots matching the current search. Selecting or filtering does not change stored hotspot data.</p><p>This page is read-only. The existing Edit Map screen remains separate until integrated location editing is available.</p>',
+);
+
