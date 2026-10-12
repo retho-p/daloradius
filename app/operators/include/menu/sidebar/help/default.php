@@ -31,26 +31,40 @@ if (strpos($_SERVER['PHP_SELF'], '/include/menu/sidebar/help/default.php') !== f
 // define descriptors
 $descriptors1 = array();
 
-$content = "";
+$content = '<span class="d-block text-start">'
+         . '<span class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">'
+         . '<strong>daloRADIUS</strong>';
 if (isset($configValues['DALORADIUS_VERSION'])) {
-    $content .= "<br>version " . $configValues['DALORADIUS_VERSION'];
-    if (!empty($configValues['DALORADIUS_DATE'])) {
-        $content .= " / " . $configValues['DALORADIUS_DATE'];
-    }
+    $version = htmlspecialchars((string)$configValues['DALORADIUS_VERSION'], ENT_QUOTES, 'UTF-8');
+    $content .= '<span class="badge rounded-pill text-bg-primary" aria-label="Version ' . $version . '">v'
+              . $version . '</span>';
 }
+$content .= '</span><span class="d-block text-secondary mb-2">RADIUS Management</span>';
+if (!empty($configValues['DALORADIUS_DATE'])) {
+    $release_date = (string)$configValues['DALORADIUS_DATE'];
+    $parsed_date = DateTimeImmutable::createFromFormat('!j F Y', $release_date);
+    $date_errors = DateTimeImmutable::getLastErrors();
+    if ($parsed_date !== false && ($date_errors === false ||
+        ($date_errors['warning_count'] === 0 && $date_errors['error_count'] === 0))) {
+        $date_content = '<time datetime="' . $parsed_date->format('Y-m-d') . '">'
+                      . $parsed_date->format('j M Y') . '</time>';
+    } else {
+        $date_content = htmlspecialchars($release_date, ENT_QUOTES, 'UTF-8');
+    }
+    $content .= '<span class="d-block small text-secondary mb-2">Released on ' . $date_content . '</span>';
+}
+$content .= '<a class="d-inline-flex align-items-center gap-1 link-primary link-underline-opacity-0 link-underline-opacity-100-hover"'
+          . ' href="https://github.com/lirantal/daloradius/releases" aria-label="View the daloRADIUS changelog">'
+          . 'Changelog <i class="bi bi-arrow-right" aria-hidden="true"></i></a></span>';
 
 $descriptors1[] = array(
                             'type' => 'textarea',
-                            'content' => sprintf('daloRADIUS - RADIUS Management%s', $content),
-                            'readmore' => array( 'href' => 'https://github.com/lirantal/daloradius',
-                                                 'title' => t('sidebar', 'ReadMore'),
-                                                 'label' => t('sidebar', 'ReadMore'),
-                                               ),
+                            'content' => $content,
                        );
 
 // add descriptors to a sections
 $sections = array();
-$sections[] = array( 'title' => t('sidebar', 'Support'), 'descriptors' => $descriptors1 );
+$sections[] = array( 'title' => 'About', 'descriptors' => $descriptors1 );
 
 // add sections to menu
 $menu = array(
