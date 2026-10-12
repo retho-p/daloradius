@@ -80,6 +80,26 @@ svg {
     overflow-wrap: anywhere;
 }
 
+.app-sidebar .sidebar-users-menu .nav-link {
+    padding-block: 0.1875rem !important;
+    color: var(--bs-body-color);
+    border-radius: var(--bs-border-radius-sm);
+}
+
+.app-sidebar .sidebar-users-menu .nav-link:hover,
+.app-sidebar .sidebar-users-menu .nav-link:focus-visible {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.app-sidebar .sidebar-users-menu .nav-link.active {
+    color: var(--bs-body-color);
+    background-color: var(--bs-secondary-bg);
+}
+
+.app-sidebar .sidebar-users-menu .nav-link.active .sidebar-link-label {
+    font-weight: 600;
+}
+
 .app-content {
     min-width: 0;
 }

@@ -71,7 +71,7 @@ function date_range_default($strategy = 'current_month') {
 const DEFAULT_COMMON_PROLOGUE_CSS = array(
     "static/css/bootstrap.min.css",
     "static/css/icons/bootstrap-icons.min.css",
-    "static/css/daloradius-responsive.css?v=compact-sidebar-2",
+    "static/css/daloradius-responsive.css?v=compact-sidebar-3",
 );
 
 const DEFAULT_COMMON_PROLOGUE_JS = array(
@@ -1679,9 +1679,9 @@ function menu_close() {
 
 
 // opens a menu session specifing a give $title
-function menu_open_section($title) {
+function menu_open_section($title, $class = "") {
     printf('<h2 class="fs-6 sidebar-heading px-3 mt-4 mb-1 text-muted text-uppercase">%s</h2>', $title);
-    echo '<ul class="nav nav-pills nav-fill flex-column">';
+    printf('<ul class="nav nav-pills nav-fill flex-column %s">', htmlspecialchars($class, ENT_QUOTES, 'UTF-8'));
 }
 
 
@@ -1743,7 +1743,7 @@ function menu_print($menu) {
     foreach ($sections as $section) {
 
         // open current section
-        menu_open_section($section['title']);
+        menu_open_section($section['title'], isset($section['class']) ? $section['class'] : "");
 
         // get descriptors for the current section
         $descriptors = $section['descriptors'];

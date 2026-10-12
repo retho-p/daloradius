@@ -38,6 +38,7 @@ $menu_users = get_users('CONFIG_DB_TBL_RADCHECK');
 
 // define descriptors
 $descriptors1 = array();
+$user_forms = array();
 
 $descriptors1[] = array( 'type' => 'link', 'label' => t('button','NewUser'), 'href' =>'mng-new.php',
                          'icon' => 'person-fill-add', 'img' => array( 'src' => 'static/images/icons/userNew.gif', ), );
@@ -71,22 +72,22 @@ if (count($menu_users) > 0) {
                             "sidebar" => true,
                           );
 
-    $descriptors1[] = array( 'type' => 'form', 'title' => t('button','EditUser'), 'action' => 'mng-edit.php', 'method' => 'GET',
+    $user_forms[] = array( 'type' => 'form', 'title' => t('button','EditUser'), 'action' => 'mng-edit.php', 'method' => 'GET',
                              'icon' => 'person-fill-gear', 'img' => array( 'src' => 'static/images/icons/userEdit.gif', ), 'form_components' => $components, );
 
-    $descriptors1[] = array( 'type' => 'form', 'title' => t('button','SearchUsers'), 'action' => 'mng-search.php', 'method' => 'GET',
+    $user_forms[] = array( 'type' => 'form', 'title' => t('button','SearchUsers'), 'action' => 'mng-search.php', 'method' => 'GET',
                              'icon' => 'search', 'img' => array( 'src' => 'static/images/icons/userSearch.gif', ), 'form_components' => $components, );
 
     $descriptors1[] = array( 'type' => 'link', 'label' => t('button','RemoveUsers'), 'href' => 'mng-del.php',
                              'icon' => 'person-fill-x', 'img' => array( 'src' => 'static/images/icons/userRemove.gif', ), );
 }
 
-$descriptors2 = array();
-$descriptors2[] = array( 'type' => 'link', 'label' => t('button','ImportUsers'), 'href' =>'mng-import-users.php',
+$descriptors1[] = array( 'type' => 'link', 'label' => t('button','ImportUsers'), 'href' =>'mng-import-users.php',
                          'icon' => 'upload', 'img' => array( 'src' => 'static/images/icons/userNew.gif', ), );
 $sections = array();
-$sections[] = array( 'title' => t('sidebar', 'UsersManagement'), 'descriptors' => $descriptors1 );
-$sections[] = array( 'title' => t('sidebar', 'ExtendedCapabilities'), 'descriptors' => $descriptors2 );
+$sections[] = array( 'title' => t('sidebar', 'UsersManagement'),
+                     'class' => 'sidebar-users-menu',
+                     'descriptors' => array_merge($descriptors1, $user_forms) );
 
 // add sections to menu
 $menu = array(
