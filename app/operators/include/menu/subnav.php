@@ -57,18 +57,8 @@ $subnav["rep"] = array(
                         );
 
 // mng subnav elements
-$subnav["mng"] = array(
-                            'Users' => 'mng-list-all.php',
-                            'Batch Users' => 'mng-batch.php',
-                            'Hotspots' => 'mng-hs.php',
-                            'Nas' => 'mng-rad-nas.php',
-                            'User-Groups' => 'mng-rad-usergroup.php',
-                            'Profiles' => 'mng-rad-profiles.php',
-                            'HuntGroups' => 'mng-rad-hunt.php',
-                            'Attributes' => 'mng-rad-attributes.php',
-                            'Realm/Proxy' => 'mng-rad-realms.php',
-                            'IP-Pool' => 'mng-rad-ippool.php',
-                        );
+// Management categories now live in the collapsible sidebar.
+$subnav["mng"] = array();
 
 // help subnav elements
 $subnav["help"] = array();

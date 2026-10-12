@@ -117,6 +117,9 @@ function print_html_prologue($title, $lang='en', $extra_css=array(), $extra_js=a
 
 EOF;
 
+    if (strpos(basename($_SERVER['PHP_SELF']), 'mng-') === 0) {
+        $extra_css[] = 'static/css/management-sidebar.css?v=1';
+    }
     $css = array_merge($common_css, $extra_css);
     foreach ($css as $href) {
         printf('<link rel="stylesheet" href="%s">' . "\n", $href);

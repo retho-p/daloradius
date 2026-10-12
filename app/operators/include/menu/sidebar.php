@@ -81,6 +81,11 @@ if (!in_array($detected_subcategory, $cat_subcat_tree[$detected_category])) {
     $detected_subcategory = "default";
 }
 
+if ($detected_category === 'mng') {
+    include __DIR__ . '/management.php';
+    return;
+}
+
 $sidebar_file = sprintf("include/menu/sidebar/%s/%s.php", $detected_category, $detected_subcategory);
 if (file_exists($sidebar_file)) {
     include($sidebar_file);
