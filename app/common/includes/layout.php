@@ -71,7 +71,7 @@ function date_range_default($strategy = 'current_month') {
 const DEFAULT_COMMON_PROLOGUE_CSS = array(
     "static/css/bootstrap.min.css",
     "static/css/icons/bootstrap-icons.min.css",
-    "static/css/daloradius-responsive.css?v=compact-sidebar-1",
+    "static/css/daloradius-responsive.css?v=compact-sidebar-2",
 );
 
 const DEFAULT_COMMON_PROLOGUE_JS = array(
@@ -1695,12 +1695,13 @@ function menu_close_section() {
 function menu_print_link($descriptor) {
     $descriptor['label'] = strip_tags(trim($descriptor['label']));
 
-    $label = "";
+    $icon = "";
     if (isset($descriptor['icon'])) {
-        $label .= sprintf('<i class="bi bi-%s me-1"></i>', $descriptor['icon']);
+        $icon = sprintf('<i class="bi bi-%s"></i>', $descriptor['icon']);
     }
 
-    $label .= $descriptor['label'];
+    $label = '<span class="sidebar-link-icon" aria-hidden="true">' . $icon . '</span>'
+           . '<span class="sidebar-link-label">' . $descriptor['label'] . '</span>';
 
     $class = ($descriptor['href'] === basename($_SERVER['PHP_SELF'])) ? "active" : "";
 
