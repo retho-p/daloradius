@@ -71,7 +71,7 @@ function date_range_default($strategy = 'current_month') {
 const DEFAULT_COMMON_PROLOGUE_CSS = array(
     "static/css/bootstrap.min.css",
     "static/css/icons/bootstrap-icons.min.css",
-    "static/css/daloradius-responsive.css?v=compact-sidebar-4",
+    "static/css/daloradius-responsive.css?v=compact-sidebar-5",
 );
 
 const DEFAULT_COMMON_PROLOGUE_JS = array(

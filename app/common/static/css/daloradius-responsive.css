@@ -80,6 +80,10 @@ svg {
     overflow-wrap: anywhere;
 }
 
+.app-sidebar .sidebar-users-menu {
+    display: block;
+}
+
 .app-sidebar .sidebar-users-menu .nav-link {
     padding-block: 0.1875rem !important;
     padding-inline: 0.25rem !important;
