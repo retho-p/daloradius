@@ -72,13 +72,14 @@
     $extra_js = array(
         "static/js/request.js",
         "static/js/readonly_info.js",
-        "static/js/pages_common.js"
+        "static/js/pages_common.js",
+        "static/js/users-list.js?v=1"
     );
 
     $title = t('Intro','mnglistall.php');
     $help = t('helpPage','mnglistall');
 
-    print_html_prologue($title, $langCode, array("static/css/users-list.css?v=1"), $extra_js);
+    print_html_prologue($title, $langCode, array("static/css/users-list.css?v=2"), $extra_js);
 
     // the array $cols has multiple purposes:
     // - its keys (when non-numerical) can be used
@@ -118,7 +119,6 @@
                ? strtolower($_GET['orderType']) : "asc";
 
     echo '<section class="users-list-page" aria-label="Users">';
-    print_title_and_help($title, $help);
     echo '<div id="returnMessages"></div>';
 
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'pages_common.php' ]);
@@ -157,24 +157,49 @@
         dalo_accounting_failure($exception);
     }
 
+    $search_markup = '';
     if ($can_search_users) {
         $search_value = htmlspecialchars($user_search, ENT_QUOTES, 'UTF-8');
-        $search_label = htmlspecialchars(t('button', 'SearchUsers'), ENT_QUOTES, 'UTF-8');
         $search_order = htmlspecialchars($orderBy, ENT_QUOTES, 'UTF-8');
-        echo '<div class="users-list-search mb-3">'
-           . '<form action="mng-list-all.php" method="GET" role="search">'
-           . '<label class="form-label small mb-1" for="users-list-search">' . $search_label . '</label>'
-           . '<input type="hidden" name="orderBy" value="' . $search_order . '">'
-           . '<input type="hidden" name="orderType" value="' . $orderType . '">'
-           . '<div class="input-group">'
-           . '<input id="users-list-search" name="username" type="search" class="form-control"'
-           . ' placeholder="Username, name or phone" value="' . $search_value . '">'
-           . '<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</button>';
+        $search_markup = '<form class="users-list-search" action="mng-list-all.php" method="GET" role="search" aria-label="Search users">'
+                      . '<input type="hidden" name="orderBy" value="' . $search_order . '">'
+                      . '<input type="hidden" name="orderType" value="' . $orderType . '">'
+                      . '<div class="input-group input-group-sm">'
+                      . '<input id="users-list-search" name="username" type="search" class="form-control"'
+                      . ' placeholder="Search" aria-label="Search users" value="' . $search_value . '">'
+                      . '<button class="btn btn-outline-secondary" type="submit" aria-label="Search" title="Search">'
+                      . '<i class="bi bi-search" aria-hidden="true"></i></button>';
         if ($user_search !== '') {
-            echo '<a class="btn btn-light" href="mng-list-all.php" aria-label="Clear user search">Clear</a>';
+            $search_markup .= '<a class="btn btn-light" href="mng-list-all.php" aria-label="Clear user search">Clear</a>';
         }
-        echo '</div></form></div>';
+        $search_markup .= '</div></form>';
     }
+
+    // A page-local toolbar keeps these layout changes out of other listings.
+    $print_users_toolbar = function ($controls = array(), $pagination = null, $export = false)
+            use ($user_actions, $search_markup, $help) {
+        echo '<div class="users-list-toolbar"><div class="users-list-toolbar-start">';
+        print_additional_controls(array_slice($controls, 0, 3));
+        echo $search_markup;
+        // Keep the optional mail action, after the search field.
+        print_additional_controls(array_slice($controls, 3));
+        echo '</div><div class="users-list-toolbar-end">';
+        print_additional_controls($user_actions);
+        if ($export) {
+            print_additional_controls(array(get_csv_export_control()));
+        }
+        if (!empty($help)) {
+            echo '<button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal"'
+               . ' data-bs-target="#users-list-help" aria-label="Help" title="Help">'
+               . '<i class="bi bi-question-circle" aria-hidden="true"></i></button>';
+        }
+        echo '</div></div>';
+        if ($pagination !== null) {
+            echo '<div class="users-list-pagination d-flex justify-content-center mb-3">';
+            print_page_numbering($pagination);
+            echo '</div>';
+        }
+    };
 
     if ($numrows > 0) {
         /* START - Related to pages_numbering.php */
@@ -265,7 +290,7 @@
         $additional_controls = array();
 
         $additional_controls[] = array(
-                                'onclick' => "javascript:removeCheckbox('listall','mng-del.php')",
+                                'onclick' => "usersListRemoveSelected()",
                                 'label' => 'Delete',
                                 'class' => 'btn-danger',
                               );
@@ -291,10 +316,6 @@
                                     );
         }
 
-        $descriptors = array();
-
-        $descriptors['start'] = array( 'common_controls' => 'username[]', 'additional_controls' => $additional_controls );
-
         $params = array(
                             'num_rows' => $numrows,
                             'rows_per_page' => $rowsPerPage,
@@ -303,11 +324,7 @@
                             'order_type' => $orderType,
                             'partial_query_string' => $partial_query_string,
                         );
-        $descriptors['center'] = array( 'draw' => $drawNumberLinks, 'params' => $params );
-
-        $descriptors['end'] = $user_actions;
-        if (!isset($failureMsg)) { $descriptors['end'][] = get_csv_export_control(); }
-        print_table_prologue($descriptors);
+        $print_users_toolbar($additional_controls, $drawNumberLinks ? $params : null, !isset($failureMsg));
 
         $form_descriptor = array( 'form' => array( 'action' => $action, 'method' => 'POST', 'name' => 'listall' ), );
 
@@ -315,7 +332,12 @@
         print_table_top($form_descriptor);
 
         // second line of table header
-        printTableHead($cols, $orderBy, $orderType, $partial_query_string);
+        $heading_cols = $cols;
+        // No name: the selection toggle must never become a submitted username.
+        $heading_cols['id'] = '<input id="users-list-select-all" class="form-check-input mt-0 me-2"'
+                            . ' type="checkbox" aria-label="Select all users on this page"'
+                            . ' title="Select all users on this page">' . $cols['id'];
+        printTableHead($heading_cols, $orderBy, $orderType, $partial_query_string);
 
         // closes table header, opens table body
         print_table_middle();
@@ -435,13 +457,24 @@
         printLinks($links, $drawNumberLinks);
 
     } else {
-        print_table_prologue(array('end' => $user_actions));
+        $print_users_toolbar();
         $failureMsg = $failureMsg ?? (($user_search !== '') ? 'No users match this search.' : 'Nothing to display');
         include_once implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'actionMessages.php' ]);
     }
 
     if (isset($failureMsg)) {
         include_once $configValues['OPERATORS_INCLUDE_MANAGEMENT'] . '/actionMessages.php';
+    }
+
+    if (!empty($help)) {
+        $help_title = htmlspecialchars($title . ' :: help', ENT_QUOTES, 'UTF-8');
+        echo '<div class="modal fade" id="users-list-help" tabindex="-1" aria-labelledby="users-list-help-label" aria-hidden="true">'
+           . '<div class="modal-dialog modal-lg"><div class="modal-content">'
+           . '<div class="modal-header"><h1 class="modal-title fs-5" id="users-list-help-label">' . $help_title . '</h1>'
+           . '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>'
+           . '<div class="modal-body">' . $help . '</div>'
+           . '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>'
+           . '</div></div></div>';
     }
 
     echo '</section>';

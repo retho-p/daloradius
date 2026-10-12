@@ -1,24 +1,46 @@
+.users-list-page .users-list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.users-list-page .users-list-toolbar-start,
+.users-list-page .users-list-toolbar-end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.users-list-page .users-list-toolbar-end {
+    margin-left: auto;
+}
+
+.users-list-page .users-list-toolbar .btn {
+    margin-left: 0 !important;
+}
+
 .users-list-page .users-list-search {
-    width: 100%;
-    max-width: 32rem;
+    flex: 0 1 14rem;
+    width: 14rem;
+    max-width: 100%;
+    margin: 0 0 0 0.25rem;
 }
 
-.users-list-page .table-controls > div:first-child {
-    flex: 0 1 auto;
-    width: auto;
+.users-list-page #users-list-select-all {
+    vertical-align: middle;
 }
 
-.users-list-page .table-controls > div:nth-child(2) {
-    order: 3;
-    flex: 1 0 100%;
-    width: 100%;
-}
+@media (max-width: 575.98px) {
+    .users-list-page .users-list-toolbar-start,
+    .users-list-page .users-list-toolbar-end {
+        width: 100%;
+    }
 
-.users-list-page .table-controls > div:last-child {
-    flex: 1 1 auto;
-    width: auto;
-}
-
-.users-list-page .table-controls > div:empty {
-    display: none !important;
+    .users-list-page .users-list-search {
+        margin-left: 0;
+    }
 }
