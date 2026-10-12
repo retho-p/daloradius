@@ -52,47 +52,60 @@ $configuredAuthSource = $authSettings['default_source'];
 $dir = (strtolower($langCode) === 'ar') ? "rtl" : "ltr";
 ?>
 <!DOCTYPE html>
-<html lang="<?= $langCode ?>" dir="<?= $dir ?>">
+<html lang="<?= htmlspecialchars($langCode, ENT_QUOTES, 'UTF-8') ?>" dir="<?= $dir ?>">
 <head>
     <title>daloRADIUS :: Login</title>
     <meta charset="utf-8">
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="copyright" content="Liran Tal & Filippo Lauria">
+    <meta name="copyright" content="Liran Tal &amp; Filippo Lauria">
     <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#f8f9f3">
     <link rel="apple-touch-icon" sizes="180x180" href="static/images/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="static/images/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="static/images/favicon/favicon-16x16.png">
     <link rel="manifest" href="static/images/favicon/site.webmanifest">
     <link rel="stylesheet" href="static/css/bootstrap.min.css">
-    <style>
-html, body { height: 100%; }
-body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40px; background-color: #f5f5f5; }
-.form-login { max-width: 480px; padding: 15px; }
-.form-login .form-floating:focus-within { z-index: 2; }
-.form-login input[type="text"] { margin-bottom: -1px; border-bottom-right-radius: 0; border-bottom-left-radius: 0; }
-.form-login input[type="password"] { margin-bottom: -1px; border-radius: 0; }
-.form-login select { margin-bottom: 10px; border-top-left-radius: 0; border-top-right-radius: 0; }
-    </style>
+    <link rel="stylesheet" href="static/css/icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="static/css/operator-login.css?v=1">
 </head>
-<body>
-    <main class="form-login w-100 m-auto">
-    <form action="dologin.php" method="POST">
-    <img class="mb-4" src="static/images/daloradius_small.png" alt="daloRADIUS" width="135" height="41">
-    <h1 class="h3 mb-3 fw-normal"><?= t('text','LoginRequired') ?></h1>
+<body class="operator-login">
+    <main class="auth-shell">
+        <figure class="auth-art">
+            <img class="auth-painting" src="static/images/login-landscape.webp"
+                 width="1672" height="941" fetchpriority="high"
+                 alt="A painted river landscape, with tall trees and a village beneath a cloud-filled sky.">
+            <div class="auth-art-shade" aria-hidden="true"></div>
+            <figcaption class="auth-art-credit">AI-generated painting inspired by the painter Charles-François Daubigny.</figcaption>
+        </figure>
 
-    <div class="form-floating">
-    <input type="text" class="form-control" id="operator_user" name="operator_user" placeholder="<?= t('all','Username') ?>" required>
-    <label for="operator_user"><?= t('all','Username') ?></label>
-    </div>
+        <section class="auth-panel" aria-labelledby="auth-title">
+            <div class="auth-content">
+                <img class="auth-logo" src="static/images/daloradius_small.png" alt="daloRADIUS" width="135" height="41">
+                <header class="auth-intro">
+                    <p class="auth-eyebrow">Operator portal</p>
+                    <h1 id="auth-title">Sign in</h1>
+                    <p id="auth-description">Enter your credentials to continue.</p>
+                </header>
 
-    <div class="form-floating">
-    <input type="password" class="form-control" id="operator_pass" name="operator_pass" placeholder="<?= t('all','Password') ?>" required>
-    <label for="operator_pass"><?= t('all','Password') ?></label>
-    </div>
+                <form class="auth-form" action="dologin.php" method="POST" aria-describedby="auth-description">
+                    <div class="form-floating auth-field">
+                        <i class="bi bi-person auth-field-icon" aria-hidden="true"></i>
+                        <input type="text" class="form-control" id="operator_user" name="operator_user"
+                               placeholder="<?= t('all','Username') ?>" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+                        <label for="operator_user"><?= t('all','Username') ?></label>
+                    </div>
+
+                    <div class="form-floating auth-field">
+                        <i class="bi bi-lock auth-field-icon" aria-hidden="true"></i>
+                        <input type="password" class="form-control" id="operator_pass" name="operator_pass"
+                               placeholder="<?= t('all','Password') ?>" autocomplete="current-password" required>
+                        <label for="operator_pass"><?= t('all','Password') ?></label>
+                    </div>
 
 <?php if ($showAuthSource): ?>
-    <div class="form-floating">
+    <div class="form-floating auth-field">
+        <i class="bi bi-shield-check auth-field-icon" aria-hidden="true"></i>
         <select class="form-select" id="operator_auth_source" name="operator_auth_source" required>
             <option value="local" <?= $configuredAuthSource === 'local' ? 'selected' : '' ?>><?= t('all','LocalDatabase') ?></option>
             <option value="ldap" <?= $configuredAuthSource === 'ldap' ? 'selected' : '' ?>><?= t('all','LDAP') ?></option>
@@ -101,7 +114,8 @@ body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40
     </div>
 <?php endif; ?>
 
-    <div class="form-floating">
+    <div class="form-floating auth-field">
+        <i class="bi bi-hdd-network auth-field-icon" aria-hidden="true"></i>
         <select class="form-select" id="location" name="location" <?= ($onlyDefaultLocation) ? " disabled" : "" ?>>
 <?php
         $defaultLocationFormat = '<option value="%s">%s</option>' . "\n";
@@ -119,10 +133,16 @@ body { display: flex; align-items: center; padding-top: 40px; padding-bottom: 40
         <label for="location"><?= t('all','Location') ?></label>
     </div>
 
-    <button class="w-100 btn btn-lg btn-primary" type="submit"><?= t('text','LoginPlease') ?></button>
-    <small class="my-2 text-muted text-center d-block"><?= t('all','daloRADIUS') ?></small>
-    <input name="csrf_token" type="hidden" value="<?= dalo_csrf_token() ?>">
-    </form>
+
+                    <button class="btn auth-submit" type="submit">
+                        <span>Sign in</span><i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </button>
+                    <input name="csrf_token" type="hidden" value="<?= dalo_csrf_token() ?>">
+                </form>
+                <p class="auth-footnote"><?= t('all','daloRADIUS') ?></p>
+            </div>
+        </section>
+    </main>
 
 <?php
     if (isset($_SESSION['operator_login_error']) && $_SESSION['operator_login_error'] !== false) {
@@ -146,7 +166,6 @@ EOF;
         unset($_SESSION['operator_login_error']);
     }
 ?>
-    </main>
     <script src="static/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

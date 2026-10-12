@@ -1,0 +1,258 @@
+/* Operator sign-in: a quiet gallery split, with entirely local assets. */
+body.operator-login {
+    margin: 0;
+    background: #f8f9f3;
+    color: #293327;
+}
+
+.operator-login .auth-shell {
+    display: grid;
+    grid-template-columns: 65% 35%;
+    min-height: 100vh;
+    min-height: 100svh;
+}
+
+.operator-login .auth-art {
+    position: relative;
+    min-width: 0;
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0;
+    overflow: hidden;
+    background: #78836b;
+}
+
+.operator-login .auth-painting,
+.operator-login .auth-art-shade {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.operator-login .auth-painting {
+    object-fit: cover;
+    object-position: 45% center;
+}
+
+.operator-login .auth-art-shade {
+    background: linear-gradient(to top, rgba(15, 23, 13, 0.56), rgba(15, 23, 13, 0.12) 28%, transparent 55%);
+    pointer-events: none;
+}
+
+.operator-login .auth-art-credit {
+    position: absolute;
+    inset-inline-start: clamp(1.25rem, 3vw, 3rem);
+    inset-inline-end: 1.25rem;
+    bottom: 1.5rem;
+    max-width: 32rem;
+    color: #fff;
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+}
+
+.operator-login .auth-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 3rem clamp(1.5rem, 3.25vw, 4rem);
+    background: #f8f9f3;
+    border-inline-start: 1px solid rgba(41, 51, 39, 0.06);
+}
+
+.operator-login .auth-content {
+    width: 100%;
+    max-width: 23rem;
+}
+
+.operator-login .auth-logo {
+    display: block;
+    width: 135px;
+    height: 41px;
+    margin-bottom: 2.75rem;
+}
+
+.operator-login .auth-intro {
+    margin-bottom: 2rem;
+}
+
+.operator-login .auth-eyebrow {
+    margin: 0 0 0.75rem;
+    color: #687260;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.operator-login .auth-intro h1 {
+    margin: 0 0 0.75rem;
+    color: #293b28;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 3vw, 2.75rem);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+}
+
+.operator-login #auth-description {
+    margin: 0;
+    color: #66705f;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.operator-login .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.operator-login .auth-field > .form-control,
+.operator-login .auth-field > .form-select {
+    height: 4rem;
+    min-height: 4rem;
+    padding-inline-start: 3.125rem;
+    border: 1px solid #d9dfd1;
+    border-radius: 0.75rem;
+    background-color: #fff;
+    color: #293327;
+    font-size: 0.9375rem;
+    box-shadow: none;
+}
+
+.operator-login .auth-field > label {
+    padding-inline-start: 3.125rem;
+    color: #687260;
+}
+
+.operator-login .auth-field-icon {
+    position: absolute;
+    inset-inline-start: 1.125rem;
+    top: 1.2rem;
+    z-index: 3;
+    color: #76836b;
+    font-size: 1.125rem;
+    line-height: 1.5;
+    pointer-events: none;
+}
+
+.operator-login .auth-field > .form-control:focus,
+.operator-login .auth-field > .form-select:focus {
+    border-color: #78a63c;
+    box-shadow: 0 0 0 0.2rem rgba(139, 197, 63, 0.16);
+}
+
+.operator-login .auth-field > .form-select:disabled {
+    background-color: #f0f2e9;
+    color: #687260;
+    opacity: 1;
+}
+
+.operator-login .auth-submit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 3.5rem;
+    margin-top: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid #8bc53f;
+    border-radius: 0.75rem;
+    background: #8bc53f;
+    color: #203015;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.operator-login .auth-submit:hover,
+.operator-login .auth-submit:active {
+    border-color: #7fb737;
+    background: #7fb737;
+    color: #203015;
+}
+
+.operator-login .auth-submit:focus-visible {
+    border-color: #507d20;
+    background: #8bc53f;
+    color: #203015;
+    outline: 2px solid #507d20;
+    outline-offset: 3px;
+    box-shadow: none;
+}
+
+.operator-login .auth-submit .bi {
+    font-size: 1.125rem;
+}
+
+.operator-login .auth-footnote {
+    margin: 2rem 0 0;
+    color: #687260;
+    font-size: 0.6875rem;
+    line-height: 1.6;
+}
+
+html[dir="rtl"] .operator-login .auth-field > label {
+    transform-origin: 100% 0;
+}
+
+@media (max-width: 1099.98px) and (min-width: 768px) {
+    .operator-login .auth-shell {
+        grid-template-columns: 50% 50%;
+    }
+
+    .operator-login .auth-panel {
+        padding-inline: 2rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .operator-login .auth-shell {
+        grid-template-columns: 100%;
+    }
+
+    .operator-login .auth-art {
+        min-height: clamp(12rem, 30svh, 20rem);
+    }
+
+    .operator-login .auth-painting {
+        object-position: center 55%;
+    }
+
+    .operator-login .auth-art-credit {
+        bottom: 1rem;
+        font-size: 0.625rem;
+    }
+
+    .operator-login .auth-panel {
+        min-height: 70svh;
+        padding: 2.25rem 1.5rem;
+        border-inline-start: 0;
+    }
+
+    .operator-login .auth-field > .form-control,
+    .operator-login .auth-field > .form-select {
+        font-size: 1rem;
+    }
+
+    .operator-login .auth-logo {
+        margin-bottom: 1.75rem;
+    }
+
+    .operator-login .auth-intro {
+        margin-bottom: 1.5rem;
+    }
+
+    .operator-login .auth-footnote {
+        margin-top: 1.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .operator-login .auth-submit {
+        transition: none;
+    }
+}
