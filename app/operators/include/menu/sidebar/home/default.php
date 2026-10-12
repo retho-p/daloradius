@@ -45,17 +45,24 @@ $descriptors2[] = array( 'type' => 'link', 'label' => t('button','SystemLog'), '
 
 $descriptors3 = array();
 
-$content = "";
+$content = '<span class="d-block text-start">'
+         . '<strong class="d-block mb-1">daloRADIUS</strong>'
+         . '<span class="d-block text-muted">RADIUS Management</span>';
 if (isset($configValues['DALORADIUS_VERSION'])) {
-    $content .= "<br>version " . $configValues['DALORADIUS_VERSION'];
+    $content .= '<span class="d-block mt-2">version '
+              . htmlspecialchars((string)$configValues['DALORADIUS_VERSION'], ENT_QUOTES, 'UTF-8')
+              . '</span>';
     if (!empty($configValues['DALORADIUS_DATE'])) {
-        $content .= " / " . $configValues['DALORADIUS_DATE'];
+        $content .= '<span class="d-block text-muted">'
+                  . htmlspecialchars((string)$configValues['DALORADIUS_DATE'], ENT_QUOTES, 'UTF-8')
+                  . '</span>';
     }
 }
+$content .= '</span>';
 
 $descriptors3[] = array(
                             'type' => 'textarea',
-                            'content' => sprintf('daloRADIUS - RADIUS Management%s', $content),
+                            'content' => $content,
                             'readmore' => array( 'href' => 'https://github.com/lirantal/daloradius',
                                                  'title' => t('sidebar', 'ReadMore'),
                                                  'label' => t('sidebar', 'ReadMore'),
