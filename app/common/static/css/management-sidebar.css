@@ -66,3 +66,9 @@
     font-size: 0.6875rem;
     text-transform: uppercase;
 }
+
+.app-sidebar .home-sidebar-about-heading {
+    color: var(--bs-body-color, #212529);
+    font-size: 0.75rem;
+    font-weight: 600;
+}

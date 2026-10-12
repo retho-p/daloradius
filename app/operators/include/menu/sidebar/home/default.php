@@ -82,7 +82,7 @@ $sections[] = array( 'title' => t('sidebar', 'Status'), 'descriptors' => $descri
                      'collapsible' => true, 'expanded' => true );
 $sections[] = array( 'title' => t('sidebar', 'Logs'), 'descriptors' => $descriptors2,
                      'collapsible' => true, 'expanded' => true );
-$sections[] = array( 'title' => 'About', 'descriptors' => $descriptors3 );
+$sections[] = array( 'title' => '<span class="home-sidebar-about-heading">About</span>', 'descriptors' => $descriptors3 );
 
 // add sections to menu
 $menu = array(

@@ -123,7 +123,7 @@
     function generateCard($title, $total, $linkText, $linkURL, $bgColor, $icon) {
         return <<<HTML
 <div class="col-md-4 m-0 p-0">
-    <div class="card m-1 rounded-0">
+    <div class="card m-1 overflow-hidden">
         <div class="row g-0">
             <div class="d-none d-md-flex col-md-2 text-bg-{$bgColor} align-items-center justify-content-center" style="--bs-bg-opacity: .9;">
                 <i class="bi bi-{$icon} fs-2"></i>
