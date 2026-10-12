@@ -50,7 +50,7 @@ $content = '<span class="d-block text-start">'
          . '<strong>daloRADIUS</strong>';
 if (isset($configValues['DALORADIUS_VERSION'])) {
     $version = htmlspecialchars((string)$configValues['DALORADIUS_VERSION'], ENT_QUOTES, 'UTF-8');
-    $content .= '<span class="badge rounded-pill text-bg-primary" aria-label="Version ' . $version . '">v'
+    $content .= '<span class="badge rounded-pill bg-light text-black" aria-label="Version ' . $version . '">v'
               . $version . '</span>';
 }
 $content .= '</span><span class="d-block text-secondary mb-2">RADIUS Management</span>';
@@ -67,7 +67,7 @@ if (!empty($configValues['DALORADIUS_DATE'])) {
     }
     $content .= '<span class="d-block small text-secondary mb-2">Released on ' . $date_content . '</span>';
 }
-$content .= '<a class="d-inline-flex align-items-center gap-1 link-primary link-underline-opacity-0 link-underline-opacity-100-hover"'
+$content .= '<a class="d-inline-flex align-items-center gap-1 link-dark text-black link-underline-opacity-0 link-underline-opacity-100-hover"'
           . ' href="https://github.com/lirantal/daloradius/releases" aria-label="View the daloRADIUS changelog">'
           . 'Changelog <i class="bi bi-arrow-right" aria-hidden="true"></i></a></span>';
 
@@ -78,8 +78,10 @@ $descriptors3[] = array(
 
 
 $sections = array();
-$sections[] = array( 'title' => t('sidebar', 'Status'), 'descriptors' => $descriptors1 );
-$sections[] = array( 'title' => t('sidebar', 'Logs'), 'descriptors' => $descriptors2 );
+$sections[] = array( 'title' => t('sidebar', 'Status'), 'descriptors' => $descriptors1,
+                     'collapsible' => true, 'expanded' => true );
+$sections[] = array( 'title' => t('sidebar', 'Logs'), 'descriptors' => $descriptors2,
+                     'collapsible' => true, 'expanded' => true );
 $sections[] = array( 'title' => 'About', 'descriptors' => $descriptors3 );
 
 // add sections to menu

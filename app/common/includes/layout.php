@@ -117,7 +117,8 @@ function print_html_prologue($title, $lang='en', $extra_css=array(), $extra_js=a
 
 EOF;
 
-    if (strpos(basename($_SERVER['PHP_SELF']), 'mng-') === 0) {
+    $sidebar_page_name = basename($_SERVER['PHP_SELF']);
+    if (strpos($sidebar_page_name, 'mng-') === 0 || strpos($sidebar_page_name, 'home-') === 0) {
         $extra_css[] = 'static/css/management-sidebar.css?v=1';
     }
     $css = array_merge($common_css, $extra_css);
@@ -1745,8 +1746,17 @@ function menu_print($menu) {
 
     foreach ($sections as $section) {
 
-        // open current section
-        menu_open_section($section['title'], isset($section['class']) ? $section['class'] : "");
+        // Disclosure is opt-in; informational sections keep their existing layout.
+        $collapsible = !empty($section['collapsible']);
+        if ($collapsible) {
+            printf('<details class="management-sidebar-group"%s>', !empty($section['expanded']) ? ' open' : '');
+            echo '<summary><span>' . htmlspecialchars(strip_tags($section['title']), ENT_QUOTES, 'UTF-8')
+               . '</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>';
+            $section_class = 'nav nav-pills flex-column management-sidebar-menu ' . ($section['class'] ?? '');
+            printf('<ul class="%s">', htmlspecialchars($section_class, ENT_QUOTES, 'UTF-8'));
+        } else {
+            menu_open_section($section['title'], isset($section['class']) ? $section['class'] : "");
+        }
 
         // get descriptors for the current section
         $descriptors = $section['descriptors'];
@@ -1757,6 +1767,9 @@ function menu_print($menu) {
 
         // close current section
         menu_close_section();
+        if ($collapsible) {
+            echo '</details>';
+        }
 
     }
 
