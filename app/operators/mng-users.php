@@ -21,31 +21,10 @@
  *********************************************************************************************************
  */
 
-    include ("library/checklogin.php");
-    $operator = $_SESSION['operator_user'];
+    include_once implode(DIRECTORY_SEPARATOR, [ __DIR__, '..', 'common', 'includes', 'config_read.php' ]);
+    include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LIBRARY'], 'checklogin.php' ]);
 
-    include_once('../common/includes/config_read.php');
-    include_once("lang/main.php");
-    include("../common/includes/layout.php");
-
-    $log = "visited page: ";
-
-
-    // print HTML prologue
-    $title = t('Intro','mngmain.php');
-    $help = "";
-
-    print_html_prologue($title, $langCode, array(), array("static/js/chart.umd.min.js", "static/js/daloradius-charts.js"));
-
-    print_title_and_help($title, $help);
-
-    $img_format = '<div class="my-3 text-center" style="height:384px"><canvas data-chart-source="%s" aria-label="%s" role="img"></canvas></div>';
-    $alt = "Total Users";
-    $src = "library/graphs/total_users.php";
-
-    printf($img_format, $src, $alt);
-
-    include('include/config/logging.php');
-    print_footer_and_html_epilogue();
-
-?>
+    // Retain bookmarked Users URLs; the list enforces its own permissions.
+    $query_string = http_build_query($_GET);
+    header('Location: mng-list-all.php' . ($query_string !== '' ? '?' . $query_string : ''));
+    exit;

@@ -29,6 +29,7 @@
     unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery'], $_SESSION['reportType']);
     try {
         dalo_accounting_validate_request($_GET);
+        $user_search = dalo_accounting_scalar($_GET, 'username');
         foreach (array('batch_name','radiusReply') as $key) {
             if (isset($_GET[$key])) { dalo_accounting_scalar($_GET, $key); }
         }
@@ -36,6 +37,16 @@
         http_response_code(400); exit('Invalid operator report filters');
     }
     if (isset($_REQUEST['page']) && !is_string($_REQUEST['page'])) { $_REQUEST['page'] = '1'; }
+
+    // The integrated search retains the existing search permission and query/export semantics.
+    if ($user_search !== '') {
+        $operator_perm_file = 'mng_search';
+        include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LIBRARY'], 'check_operator_perm.php' ]);
+        unset($operator_perm_file);
+    }
+    $report_source = ($user_search !== '') ? 'mng-search' : 'mng-list-all';
+    $report_filters = ($user_search !== '') ? array('username' => $user_search) : array();
+    $partial_query_string = ($user_search !== '') ? '&username=' . urlencode($user_search) : '';
 
     // Clear any export state from a previous page before processing this page.
     unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery']);
@@ -67,7 +78,7 @@
     $title = t('Intro','mnglistall.php');
     $help = t('helpPage','mnglistall');
 
-    print_html_prologue($title, $langCode, array(), $extra_js);
+    print_html_prologue($title, $langCode, array("static/css/users-list.css?v=1"), $extra_js);
 
     // the array $cols has multiple purposes:
     // - its keys (when non-numerical) can be used
@@ -106,21 +117,64 @@
                   in_array(strtolower($_GET['orderType']), array("asc", "desc")))
                ? strtolower($_GET['orderType']) : "asc";
 
+    echo '<section class="users-list-page" aria-label="Users">';
     print_title_and_help($title, $help);
     echo '<div id="returnMessages"></div>';
 
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'pages_common.php' ]);
 
     $_SESSION['reportType'] = 'usernameListGeneric';
-    $_SESSION['reportExport'] = array('source'=>'mng-list-all','type'=>'usernameListGeneric','filters'=>array());
+    $_SESSION['reportExport'] = array('source'=>$report_source,'type'=>'usernameListGeneric','filters'=>$report_filters);
     $reportPDO = null;
     $reportRows = array();
     $numrows = 0;
+    $can_search_users = false;
+    $user_actions = array();
     try {
         $reportPDO = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
-        list($reportSQL, $reportBindings) = dalo_operator_query('mng-list-all', array(), $configValues);
+        $can_search_users = dalo_operator_acl_allowed($reportPDO, $configValues, $_SESSION['operator_id'], 'mng_search');
+        $action_pages = array(
+            array('mng_new', 'mng-new.php', 'NewUser', 'person-fill-add', 'btn-primary'),
+            array('mng_new_quick', 'mng-new-quick.php', 'NewUserQuick', 'lightning-charge', 'btn-outline-secondary'),
+            array('mng_import_users', 'mng-import-users.php', 'ImportUsers', 'upload', 'btn-outline-secondary'),
+        );
+        foreach ($action_pages as $action_page) {
+            list($permission, $href, $label_key, $icon, $class) = $action_page;
+            if (dalo_operator_acl_allowed($reportPDO, $configValues, $_SESSION['operator_id'], $permission)) {
+                $user_actions[] = array(
+                    'onclick' => sprintf("location.href='%s'", $href),
+                    'label' => t('button', $label_key),
+                    'icon' => $icon,
+                    'class' => $class,
+                );
+            }
+        }
+        list($reportSQL, $reportBindings) = dalo_operator_query($report_source, $report_filters, $configValues);
         $numrows = dalo_accounting_count($reportPDO, $reportSQL, $reportBindings, $configValues);
-    } catch (Throwable $exception) { dalo_accounting_failure($exception); }
+    } catch (Throwable $exception) {
+        $can_search_users = false;
+        $user_actions = array();
+        dalo_accounting_failure($exception);
+    }
+
+    if ($can_search_users) {
+        $search_value = htmlspecialchars($user_search, ENT_QUOTES, 'UTF-8');
+        $search_label = htmlspecialchars(t('button', 'SearchUsers'), ENT_QUOTES, 'UTF-8');
+        $search_order = htmlspecialchars($orderBy, ENT_QUOTES, 'UTF-8');
+        echo '<div class="users-list-search mb-3">'
+           . '<form action="mng-list-all.php" method="GET" role="search">'
+           . '<label class="form-label small mb-1" for="users-list-search">' . $search_label . '</label>'
+           . '<input type="hidden" name="orderBy" value="' . $search_order . '">'
+           . '<input type="hidden" name="orderType" value="' . $orderType . '">'
+           . '<div class="input-group">'
+           . '<input id="users-list-search" name="username" type="search" class="form-control"'
+           . ' placeholder="Username, name or phone" value="' . $search_value . '">'
+           . '<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</button>';
+        if ($user_search !== '') {
+            echo '<a class="btn btn-light" href="mng-list-all.php" aria-label="Clear user search">Clear</a>';
+        }
+        echo '</div></form></div>';
+    }
 
     if ($numrows > 0) {
         /* START - Related to pages_numbering.php */
@@ -136,7 +190,7 @@
         /* END */
 
         try {
-            $reportRows = dalo_operator_rows($reportPDO, $reportSQL, $reportBindings, 'mng-list-all',
+            $reportRows = dalo_operator_rows($reportPDO, $reportSQL, $reportBindings, $report_source,
                 $orderBy, $orderType, (int)$offset, (int)$rowsPerPage, true);
         } catch (Throwable $exception) { dalo_accounting_failure($exception); }
         $per_page_numrows = count($reportRows);
@@ -247,10 +301,11 @@
                             'page_num' => $pageNum,
                             'order_by' => $orderBy,
                             'order_type' => $orderType,
+                            'partial_query_string' => $partial_query_string,
                         );
         $descriptors['center'] = array( 'draw' => $drawNumberLinks, 'params' => $params );
 
-        $descriptors['end'] = array();
+        $descriptors['end'] = $user_actions;
         if (!isset($failureMsg)) { $descriptors['end'][] = get_csv_export_control(); }
         print_table_prologue($descriptors);
 
@@ -260,7 +315,7 @@
         print_table_top($form_descriptor);
 
         // second line of table header
-        printTableHead($cols, $orderBy, $orderType);
+        printTableHead($cols, $orderBy, $orderType, $partial_query_string);
 
         // closes table header, opens table body
         print_table_middle();
@@ -376,11 +431,12 @@
         print_table_bottom($descriptor);
 
         // get and print "links"
-        $links = setupLinks_str($pageNum, $maxPage, $orderBy, $orderType);
+        $links = setupLinks_str($pageNum, $maxPage, $orderBy, $orderType, $partial_query_string);
         printLinks($links, $drawNumberLinks);
 
     } else {
-        $failureMsg = $failureMsg ?? "Nothing to display";
+        print_table_prologue(array('end' => $user_actions));
+        $failureMsg = $failureMsg ?? (($user_search !== '') ? 'No users match this search.' : 'Nothing to display');
         include_once implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'actionMessages.php' ]);
     }
 
@@ -388,6 +444,7 @@
         include_once $configValues['OPERATORS_INCLUDE_MANAGEMENT'] . '/actionMessages.php';
     }
 
+    echo '</section>';
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_CONFIG'], 'logging.php' ]);
     if (isset($failureMsg) || empty($numrows)) {
         unset($_SESSION['reportExport'], $_SESSION['reportTable'], $_SESSION['reportQuery'], $_SESSION['reportType']);

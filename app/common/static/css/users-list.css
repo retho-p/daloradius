@@ -1,0 +1,24 @@
+.users-list-page .users-list-search {
+    width: 100%;
+    max-width: 32rem;
+}
+
+.users-list-page .table-controls > div:first-child {
+    flex: 0 1 auto;
+    width: auto;
+}
+
+.users-list-page .table-controls > div:nth-child(2) {
+    order: 3;
+    flex: 1 0 100%;
+    width: 100%;
+}
+
+.users-list-page .table-controls > div:last-child {
+    flex: 1 1 auto;
+    width: auto;
+}
+
+.users-list-page .table-controls > div:empty {
+    display: none !important;
+}

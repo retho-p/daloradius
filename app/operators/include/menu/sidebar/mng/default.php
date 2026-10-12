@@ -27,70 +27,22 @@ if (strpos($_SERVER['PHP_SELF'], '/include/menu/sidebar/mng/default.php') !== fa
     exit;
 }
 
-$autocomplete = (isset($configValues['CONFIG_IFACE_AUTO_COMPLETE']) &&
-                 strtolower($configValues['CONFIG_IFACE_AUTO_COMPLETE']) === "yes");
-
-global $username;
-
 include_once("include/management/populate_selectbox.php");
 $menu_users = get_users('CONFIG_DB_TBL_RADCHECK');
 
-
-// define descriptors
-$descriptors1 = array();
-$user_forms = array();
-
-$descriptors1[] = array( 'type' => 'link', 'label' => t('button','NewUser'), 'href' =>'mng-new.php',
-                         'icon' => 'person-fill-add', 'img' => array( 'src' => 'static/images/icons/userNew.gif', ), );
-$descriptors1[] = array( 'type' => 'link', 'label' => t('button','NewUserQuick'), 'href' =>'mng-new-quick.php',
-                         'icon' => 'person-fill-add', 'img' => array( 'src' => 'static/images/icons/userNew.gif', ), );
-
+$descriptors = array();
+$descriptors[] = array( 'type' => 'link', 'label' => t('button', 'ListUsers'),
+                        'href' => 'mng-list-all.php', 'icon' => 'person-lines-fill', );
 if (count($menu_users) > 0) {
-    $descriptors1[] = array( 'type' => 'link', 'label' => t('button','ListUsers'), 'href' => 'mng-list-all.php',
-                             'icon' => 'person-lines-fill', 'img' => array( 'src' => 'static/images/icons/userList.gif', ), );
-
-    $components = array();
-    $components[] = array(
-                            // this will produce a random id
-                            "id" => 'random',
-                            "name" => "username",
-                            "type" => "text",
-                            "value" => ((isset($username)) ? $username : ""),
-                            "required" => true,
-                            "datalist" => array(
-                                                    'type' => 'ajax',
-                                                    'url' => 'library/ajax/json_api.php',
-                                                    'search_param' => 'username',
-                                                    'params' => array(
-                                                                        'datatype' => 'usernames',
-                                                                        'action' => 'list',
-                                                                        'table' => 'CONFIG_DB_TBL_RADCHECK',
-                                                                     ),
-                                               ),
-                            "tooltipText" => t('Tooltip','usernameTooltip'),
-                            "caption" => t('all','Username'),
-                            "sidebar" => true,
-                          );
-
-    $user_forms[] = array( 'type' => 'form', 'title' => t('button','EditUser'), 'action' => 'mng-edit.php', 'method' => 'GET',
-                             'icon' => 'person-fill-gear', 'img' => array( 'src' => 'static/images/icons/userEdit.gif', ), 'form_components' => $components, );
-
-    $user_forms[] = array( 'type' => 'form', 'title' => t('button','SearchUsers'), 'action' => 'mng-search.php', 'method' => 'GET',
-                             'icon' => 'search', 'img' => array( 'src' => 'static/images/icons/userSearch.gif', ), 'form_components' => $components, );
-
-    $descriptors1[] = array( 'type' => 'link', 'label' => t('button','RemoveUsers'), 'href' => 'mng-del.php',
-                             'icon' => 'person-fill-x', 'img' => array( 'src' => 'static/images/icons/userRemove.gif', ), );
+    $descriptors[] = array( 'type' => 'link', 'label' => t('button', 'RemoveUsers'),
+                            'href' => 'mng-del.php', 'icon' => 'person-fill-x', );
 }
 
-$descriptors1[] = array( 'type' => 'link', 'label' => t('button','ImportUsers'), 'href' =>'mng-import-users.php',
-                         'icon' => 'upload', 'img' => array( 'src' => 'static/images/icons/userNew.gif', ), );
-$sections = array();
-$sections[] = array( 'title' => t('sidebar', 'UsersManagement'),
-                     'class' => 'sidebar-users-menu',
-                     'descriptors' => array_merge($descriptors1, $user_forms) );
-
-// add sections to menu
 $menu = array(
-                'title' => t('sidebar', 'Management'),
-                'sections' => $sections,
-             );
+    'title' => t('sidebar', 'Management'),
+    'sections' => array(
+        array( 'title' => t('sidebar', 'UsersManagement'),
+               'class' => 'sidebar-users-menu',
+               'descriptors' => $descriptors, ),
+    ),
+);
