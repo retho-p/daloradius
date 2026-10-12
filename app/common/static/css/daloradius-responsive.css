@@ -82,6 +82,7 @@ svg {
 
 .app-sidebar .sidebar-users-menu .nav-link {
     padding-block: 0.1875rem !important;
+    padding-inline: 0.25rem !important;
     color: var(--bs-body-color);
     border-radius: var(--bs-border-radius-sm);
 }
