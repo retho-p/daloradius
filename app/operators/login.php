@@ -67,7 +67,7 @@ $dir = (strtolower($langCode) === 'ar') ? "rtl" : "ltr";
     <link rel="manifest" href="static/images/favicon/site.webmanifest">
     <link rel="stylesheet" href="static/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/css/icons/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="static/css/operator-login.css?v=1">
+    <link rel="stylesheet" href="static/css/operator-login.css?v=2">
 </head>
 <body class="operator-login">
     <main class="auth-shell">
@@ -83,12 +83,10 @@ $dir = (strtolower($langCode) === 'ar') ? "rtl" : "ltr";
             <div class="auth-content">
                 <img class="auth-logo" src="static/images/daloradius_small.png" alt="daloRADIUS" width="135" height="41">
                 <header class="auth-intro">
-                    <p class="auth-eyebrow">Operator portal</p>
                     <h1 id="auth-title">Sign in</h1>
-                    <p id="auth-description">Enter your credentials to continue.</p>
                 </header>
 
-                <form class="auth-form" action="dologin.php" method="POST" aria-describedby="auth-description">
+                <form class="auth-form" action="dologin.php" method="POST">
                     <div class="form-floating auth-field">
                         <i class="bi bi-person auth-field-icon" aria-hidden="true"></i>
                         <input type="text" class="form-control" id="operator_user" name="operator_user"
@@ -139,8 +137,11 @@ $dir = (strtolower($langCode) === 'ar') ? "rtl" : "ltr";
                     </button>
                     <input name="csrf_token" type="hidden" value="<?= dalo_csrf_token() ?>">
                 </form>
-                <p class="auth-footnote"><?= t('all','daloRADIUS') ?></p>
             </div>
+            <footer class="auth-footer">
+                <span>Operator portal</span><span aria-hidden="true"> · </span>
+                <span>daloRADIUS<?php if (isset($configValues['DALORADIUS_VERSION'])): ?> v<?= htmlspecialchars((string) $configValues['DALORADIUS_VERSION'], ENT_QUOTES, 'UTF-8') ?><?php endif; ?></span>
+            </footer>
         </section>
     </main>
 
