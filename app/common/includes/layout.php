@@ -71,7 +71,7 @@ function date_range_default($strategy = 'current_month') {
 const DEFAULT_COMMON_PROLOGUE_CSS = array(
     "static/css/bootstrap.min.css",
     "static/css/icons/bootstrap-icons.min.css",
-    "static/css/daloradius-responsive.css",
+    "static/css/daloradius-responsive.css?v=compact-sidebar-1",
 );
 
 const DEFAULT_COMMON_PROLOGUE_JS = array(
@@ -156,16 +156,16 @@ EOF;
     // opening main wrapper container
     echo <<<EOF
 
-        <div class="container-fluid app-shell">
+        <div class="container-fluid app-shell px-0">
             <div class="row g-0">
-                <aside id="sidebarOffcanvas" class="offcanvas-lg offcanvas-start app-sidebar col-lg-2 bg-light text-dark border-end"
+                <aside id="sidebarOffcanvas" class="offcanvas-lg offcanvas-start app-sidebar bg-light text-dark border-end"
                        tabindex="-1" aria-labelledby="sidebarOffcanvasLabel">
                     <div class="offcanvas-header d-lg-none">
                         <h2 class="offcanvas-title fs-5" id="sidebarOffcanvasLabel">Menu</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarOffcanvas"
                                 aria-label="Close"></button>
                     </div>
-                    <div class="offcanvas-body d-block p-2 p-lg-3">
+                    <div class="offcanvas-body d-block p-2">
 EOF;
 
     // printing sidebar
@@ -177,7 +177,7 @@ EOF;
                     </div><!-- .offcanvas-body -->
                 </aside><!-- #sidebarOffcanvas -->
 
-                <main class="app-content col-12 col-lg-10 p-2 p-lg-3 bg-white text-dark">
+                <main class="app-content col-12 p-2 p-lg-3 bg-white text-dark">
 
 EOF;
 }

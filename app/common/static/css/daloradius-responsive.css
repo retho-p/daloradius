@@ -49,6 +49,22 @@ svg {
     min-width: 0;
 }
 
+.app-sidebar .offcanvas-body > h1 {
+    font-size: 1.125rem !important;
+}
+
+.app-sidebar .sidebar-heading {
+    padding-inline: 0.25rem !important;
+    margin-top: 1rem !important;
+    font-size: 0.75rem !important;
+    line-height: 1.4;
+}
+
+.app-sidebar .nav-link {
+    padding-block: 0.375rem !important;
+    font-size: 0.875rem;
+}
+
 .app-content {
     min-width: 0;
 }
@@ -175,7 +191,14 @@ svg {
         width: auto;
     }
 
+    .app-content {
+        flex: 1 1 0;
+        width: auto;
+    }
+
     .app-sidebar {
+        flex: 0 0 220px;
+        width: 220px;
         position: sticky;
         top: 0;
         min-height: 100vh;
