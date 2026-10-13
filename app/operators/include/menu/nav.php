@@ -86,7 +86,7 @@ if (!in_array($detect_category, array_keys($nav))) {
             
             <div class="dropdown text-end dropstart ms-auto order-2 order-lg-0">
                 <a href="#" class="d-block link-dark text-decoration-none dropdown-toggle"
-                    data-bs-toggle="dropdown" aria-expanded="false">
+                    data-bs-toggle="dropdown" aria-expanded="false" aria-label="User menu">
                     <i class="bi bi-person-circle"></i>
                 </a>
                 
@@ -101,6 +101,11 @@ if (!in_array($detect_category, array_keys($nav))) {
                             Location: <strong><?= htmlspecialchars($_SESSION['location_name'], ENT_QUOTES, 'UTF-8') ?></strong>
                         </span>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Theme</h6></li>
+                    <li><button class="dropdown-item theme-option d-flex align-items-center gap-2" type="button" data-operator-theme="light" aria-pressed="true"><i class="bi bi-sun" aria-hidden="true"></i><span>Light</span><i class="bi bi-check2 theme-check ms-auto" aria-hidden="true"></i></button></li>
+                    <li><button class="dropdown-item theme-option d-flex align-items-center gap-2" type="button" data-operator-theme="night" aria-pressed="false"><i class="bi bi-moon-stars" aria-hidden="true"></i><span>Night</span><i class="bi bi-check2 theme-check ms-auto" aria-hidden="true"></i></button></li>
+                    <li><button class="dropdown-item theme-option d-flex align-items-center gap-2" type="button" data-operator-theme="auto" aria-pressed="false"><i class="bi bi-circle-half" aria-hidden="true"></i><span>Auto</span><i class="bi bi-check2 theme-check ms-auto" aria-hidden="true"></i></button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="logout.php">Log out</a></li>
                 </ul>

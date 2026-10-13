@@ -12,6 +12,8 @@ body.operator-app {
     --dalo-accent: #8bc53f;
     --dalo-forest: #466734;
     --dalo-selected: #e8efdf;
+    --dalo-control: #466734;
+    --dalo-focus-rgb: 70, 103, 52;
     --bs-body-bg: var(--dalo-background);
     --bs-body-bg-rgb: 248, 249, 243;
     --bs-body-color: var(--dalo-text);
@@ -144,7 +146,7 @@ body.operator-app {
 :where(.operator-app) .form-control:not(.is-valid):not(.is-invalid):focus,
 :where(.operator-app) .form-select:not(.is-valid):not(.is-invalid):focus {
     border-color: var(--dalo-forest);
-    box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+    box-shadow: 0 0 0 0.25rem rgba(var(--dalo-focus-rgb), 0.16);
 }
 
 .operator-app .form-control::placeholder {
@@ -182,13 +184,13 @@ body.operator-app {
 
 .operator-app .form-check-input:checked,
 .operator-app .form-check-input:indeterminate {
-    background-color: var(--dalo-forest);
+    background-color: var(--dalo-control);
     border-color: var(--dalo-forest);
 }
 
 .operator-app .form-check-input:focus {
     border-color: var(--dalo-forest);
-    box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+    box-shadow: 0 0 0 0.25rem rgba(var(--dalo-focus-rgb), 0.16);
 }
 
 .operator-app .form-check-input.is-invalid,
@@ -252,7 +254,7 @@ body.operator-app {
     --bs-pagination-hover-border-color: var(--dalo-border);
     --bs-pagination-focus-color: var(--dalo-heading);
     --bs-pagination-focus-bg: var(--dalo-sage);
-    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--dalo-focus-rgb), 0.16);
     --bs-pagination-active-color: var(--dalo-heading);
     --bs-pagination-active-bg: var(--dalo-selected);
     --bs-pagination-active-border-color: var(--dalo-border);
@@ -271,7 +273,7 @@ body.operator-app {
 
 .operator-app .progress {
     --bs-progress-bg: var(--dalo-sage);
-    --bs-progress-bar-bg: var(--dalo-forest);
+    --bs-progress-bar-bg: var(--dalo-control);
 }
 
 .operator-app .nav-link:focus-visible {
@@ -315,7 +317,7 @@ body.operator-app {
     --bs-accordion-active-color: var(--dalo-heading);
     --bs-accordion-active-bg: var(--dalo-selected);
     --bs-accordion-btn-active-icon: var(--bs-accordion-btn-icon);
-    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.25rem rgba(var(--dalo-focus-rgb), 0.16);
 }
 
 .operator-app .list-group {
@@ -346,4 +348,137 @@ body.operator-app {
     --bs-popover-header-bg: var(--dalo-sage);
     --bs-popover-header-color: var(--dalo-heading);
     --bs-popover-border-color: var(--dalo-border);
+}
+
+
+/* Bootstrap's dark mode supplies semantic alerts and native control icons. */
+html[data-bs-theme="dark"] body.operator-app {
+    --dalo-background: #161c18;
+    --dalo-surface: #202922;
+    --dalo-sage: #1b241e;
+    --dalo-border: #39483d;
+    --dalo-heading: #eff3e9;
+    --dalo-text: #dce5d8;
+    --dalo-muted: #abb7a6;
+    --dalo-forest: #b2d38e;
+    --dalo-selected: #30402d;
+    --bs-body-bg-rgb: 22, 28, 24;
+    --bs-body-color-rgb: 220, 229, 216;
+    --bs-emphasis-color-rgb: 239, 243, 233;
+    --bs-secondary-bg-rgb: 48, 64, 45;
+    --bs-tertiary-bg-rgb: 27, 36, 30;
+    --bs-secondary-rgb: 171, 183, 166;
+    --bs-light-rgb: 27, 36, 30;
+    --bs-link-color-rgb: 178, 211, 142;
+    --bs-link-hover-color-rgb: 239, 243, 233;
+    --dalo-focus-rgb: 178, 211, 142;
+    --bs-border-color-translucent: rgba(220, 229, 216, 0.16);
+    color-scheme: dark;
+}
+
+.operator-app .theme-check {
+    visibility: hidden;
+}
+
+.operator-app .theme-option[aria-pressed="true"] {
+    background-color: var(--dalo-selected);
+    color: var(--dalo-heading);
+}
+
+.operator-app .theme-option[aria-pressed="true"] .theme-check {
+    visibility: visible;
+}
+
+.operator-app .dropdown-header {
+    color: var(--dalo-muted);
+}
+
+html[data-bs-theme="dark"] .operator-app :is(.text-dark, .text-black, .link-dark, .text-bg-light) {
+    color: var(--dalo-text) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .link-dark:hover {
+    color: var(--dalo-heading) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .bg-white {
+    background-color: var(--dalo-surface) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app :is(.text-bg-secondary, .badge.bg-secondary) {
+    color: var(--dalo-background) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .text-bg-secondary :is(h1, h2, h3, h4, h5, h6) {
+    color: inherit;
+}
+
+/* Preserve the original logo, including its green mark and dark lettering. */
+html[data-bs-theme="dark"] .operator-app :is(.app-brand, .app-footer) img {
+    background-color: #f8f9f3;
+    border-radius: 3px;
+}
+
+html[data-bs-theme="dark"] .operator-app :is(.text-primary, .link-primary) {
+    color: var(--dalo-forest) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .text-bg-warning :is(.text-black, .text-dark, .link-dark) {
+    color: #293327 !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .form-floating > label::after {
+    background-color: var(--dalo-surface);
+}
+
+html[data-bs-theme="dark"] .operator-app .form-floating > :disabled ~ label::after {
+    background-color: var(--dalo-sage);
+}
+
+/* Semantic outline actions and text need lighter foregrounds on dark surfaces. */
+html[data-bs-theme="dark"] .operator-app :is(.text-success, .link-success) {
+    color: var(--bs-success-text-emphasis) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app :is(.text-danger, .link-danger) {
+    color: var(--bs-danger-text-emphasis) !important;
+}
+
+html[data-bs-theme="dark"] .operator-app .btn-outline-success {
+    --bs-btn-color: var(--bs-success-text-emphasis);
+    --bs-btn-border-color: var(--bs-success-text-emphasis);
+    --bs-btn-disabled-color: var(--bs-success-text-emphasis);
+    --bs-btn-disabled-border-color: var(--bs-success-text-emphasis);
+}
+
+html[data-bs-theme="dark"] .operator-app .btn-outline-danger {
+    --bs-btn-color: var(--bs-danger-text-emphasis);
+    --bs-btn-border-color: var(--bs-danger-text-emphasis);
+    --bs-btn-disabled-color: var(--bs-danger-text-emphasis);
+    --bs-btn-disabled-border-color: var(--bs-danger-text-emphasis);
+}
+
+/* Theme map controls, not the geographic tiles or marker assets. */
+html[data-bs-theme="dark"] .operator-app :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-control-layers) {
+    background-color: var(--dalo-surface);
+    color: var(--dalo-text);
+}
+
+html[data-bs-theme="dark"] .operator-app .leaflet-bar a {
+    background-color: var(--dalo-surface);
+    color: var(--dalo-text);
+    border-color: var(--dalo-border);
+}
+
+html[data-bs-theme="dark"] .operator-app .leaflet-bar a:hover {
+    background-color: var(--dalo-sage);
+}
+
+html[data-bs-theme="dark"] .operator-app .leaflet-control-layers-toggle {
+    background-color: #f8f9f3;
+}
+
+html[data-bs-theme="dark"] .operator-app .leaflet-control-attribution {
+    background-color: var(--dalo-surface);
+    color: var(--dalo-muted);
 }

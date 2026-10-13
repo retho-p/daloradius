@@ -123,13 +123,17 @@ function print_html_prologue($title, $lang='en', $extra_css=array(), $extra_js=a
 
 EOF;
 
+    if ($is_operator_portal) {
+        echo '<script src="static/js/operator-theme.js?v=1"></script>' . "\n";
+    }
+
     $sidebar_page_name = basename($_SERVER['PHP_SELF']);
     if (strpos($sidebar_page_name, 'mng-') === 0 || strpos($sidebar_page_name, 'home-') === 0) {
         $extra_css[] = 'static/css/management-sidebar.css?v=2';
     }
     $css = array_merge($common_css, $extra_css);
     if ($is_operator_portal) {
-        $css[] = 'static/css/operator-theme.css?v=1';
+        $css[] = 'static/css/operator-theme.css?v=2';
     }
     foreach ($css as $href) {
         printf('<link rel="stylesheet" href="%s">' . "\n", $href);
@@ -141,6 +145,9 @@ EOF;
 
     $js = array_merge($common_js, $extra_js);
     foreach ($js as $src) {
+        if ($is_operator_portal && $src === 'static/js/daloradius-charts.js') {
+            $src .= '?v=2';
+        }
         printf('<script src="%s"></script>' . "\n", $src);
     }
 

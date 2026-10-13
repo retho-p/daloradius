@@ -64,7 +64,7 @@
     // print HTML prologue
     $title = t('button', 'Dashboard');
 
-    print_html_prologue($title, $langCode, array('static/css/operator-dashboard.css?v=1'));
+    print_html_prologue($title, $langCode, array('static/css/operator-dashboard.css?v=2'));
 
     // Consolidated SQL queries
     $cardRows=dashboard_rows(sprintf("SELECT COUNT(DISTINCT ui.username) FROM %s AS rc,%s AS ui WHERE ui.username=rc.username AND (rc.attribute='Auth-Type' OR rc.attribute LIKE '%%-Password')",dashboard_table('CONFIG_DB_TBL_RADCHECK'),dashboard_table('CONFIG_DB_TBL_DALOUSERINFO')));

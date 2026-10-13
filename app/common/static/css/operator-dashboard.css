@@ -19,13 +19,13 @@
 }
 
 .operator-app .dashboard-stat-icon {
-    background-color: var(--dashboard-accent);
+    background-color: var(--dashboard-icon-bg, var(--dashboard-accent));
     color: #fff;
 }
 
 .operator-app .dashboard-stat-card .btn {
     --bs-btn-color: var(--dashboard-accent);
-    --bs-btn-bg: #fff;
+    --bs-btn-bg: var(--dalo-surface, #fff);
     --bs-btn-border-color: var(--dashboard-accent);
     --bs-btn-hover-color: var(--dashboard-accent);
     --bs-btn-hover-bg: var(--dashboard-tint);
@@ -66,4 +66,27 @@
 
 .operator-app .dashboard-data-panel > .col-12 > .alert {
     margin: 0.75rem;
+}
+
+
+/* Keep solid, white-icon category panels; lighten only borders and links. */
+html[data-bs-theme="dark"] .operator-app .dashboard-stat-card {
+    --dashboard-accent: #b2d38e;
+    --dashboard-accent-rgb: 178, 211, 142;
+    --dashboard-icon-bg: #466734;
+    --dashboard-tint: #30402d;
+}
+
+html[data-bs-theme="dark"] .operator-app .dashboard-stat-card--nas {
+    --dashboard-accent: #a6c4d1;
+    --dashboard-accent-rgb: 166, 196, 209;
+    --dashboard-icon-bg: #58727d;
+    --dashboard-tint: #2a3a41;
+}
+
+html[data-bs-theme="dark"] .operator-app .dashboard-stat-card--hotspots {
+    --dashboard-accent: #c2ce9b;
+    --dashboard-accent-rgb: 194, 206, 155;
+    --dashboard-icon-bg: #667445;
+    --dashboard-tint: #343d28;
 }
