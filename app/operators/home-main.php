@@ -123,12 +123,12 @@
     function generateCard($title, $total, $linkText, $linkURL, $bgColor, $icon) {
         return <<<HTML
 <div class="col-md-4 m-0 p-0">
-    <div class="card m-1 overflow-hidden">
+    <div class="card dashboard-stat-card m-1 overflow-hidden">
         <div class="row g-0">
             <div class="d-none d-md-flex col-md-2 text-bg-{$bgColor} align-items-center justify-content-center" style="--bs-bg-opacity: .9;">
                 <i class="bi bi-{$icon} fs-2"></i>
             </div>
-            <div class="col-md-10 p-1 d-flex align-items-center justify-content-center flex-column text-bg-{$bgColor}">
+            <div class="col-md-10 p-1 d-flex align-items-center justify-content-center flex-column dashboard-stat-body">
                 <h5 class="card-title">{$title}</h5>
                 <p class="card-text">{$total}</p>
                 <a href="{$linkURL}" class="btn btn-light btn-sm">{$linkText}</a>
@@ -149,7 +149,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_users),
             "linkText" => t('dashboard', 'GoToUsersList'),
             "linkURL" => "mng-list-all.php",
-            "bgColor" => "success",
+            "bgColor" => "light",
             "icon" => "people-fill"
         ],
         [
@@ -157,7 +157,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_nas),
             "linkText" => t('dashboard', 'GoToNASList'),
             "linkURL" => "mng-rad-nas-list.php",
-            "bgColor" => "danger",
+            "bgColor" => "light",
             "icon" => "router-fill"
         ],
         [
@@ -165,7 +165,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_hotspots),
             "linkText" => t('dashboard', 'GoToHotspotsList'),
             "linkURL" => "mng-hs-list.php",
-            "bgColor" => "primary",
+            "bgColor" => "light",
             "icon" => "wifi"
         ]
     ];

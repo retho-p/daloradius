@@ -1,0 +1,349 @@
+/* Operator portal palette: gallery neutrals, sage and restrained green accents.
+ * Presentation only: keep Bootstrap's warning, error and success semantics.
+ */
+body.operator-app {
+    --dalo-background: #f8f9f3;
+    --dalo-surface: #ffffff;
+    --dalo-sage: #f0f2e9;
+    --dalo-border: #d9dfd1;
+    --dalo-heading: #293b28;
+    --dalo-text: #293327;
+    --dalo-muted: #687260;
+    --dalo-accent: #8bc53f;
+    --dalo-forest: #466734;
+    --dalo-selected: #e8efdf;
+    --bs-body-bg: var(--dalo-background);
+    --bs-body-bg-rgb: 248, 249, 243;
+    --bs-body-color: var(--dalo-text);
+    --bs-body-color-rgb: 41, 51, 39;
+    --bs-emphasis-color: var(--dalo-heading);
+    --bs-emphasis-color-rgb: 41, 59, 40;
+    --bs-secondary-color: var(--dalo-muted);
+    --bs-secondary-bg: var(--dalo-selected);
+    --bs-secondary-bg-rgb: 232, 239, 223;
+    --bs-tertiary-bg: var(--dalo-sage);
+    --bs-tertiary-bg-rgb: 240, 242, 233;
+    --bs-border-color: var(--dalo-border);
+    --bs-border-color-translucent: rgba(41, 51, 39, 0.14);
+    --bs-primary: var(--dalo-forest);
+    --bs-primary-rgb: 70, 103, 52;
+    --bs-primary-text-emphasis: var(--dalo-heading);
+    --bs-primary-bg-subtle: var(--dalo-selected);
+    --bs-primary-border-subtle: var(--dalo-border);
+    --bs-secondary: var(--dalo-muted);
+    --bs-secondary-rgb: 104, 114, 96;
+    --bs-light: var(--dalo-sage);
+    --bs-light-rgb: 240, 242, 233;
+    --bs-dark: var(--dalo-text);
+    --bs-dark-rgb: 41, 51, 39;
+    --bs-link-color: var(--dalo-forest);
+    --bs-link-color-rgb: 70, 103, 52;
+    --bs-link-hover-color: var(--dalo-heading);
+    --bs-link-hover-color-rgb: 41, 59, 40;
+    background-color: var(--dalo-background);
+    color: var(--dalo-text);
+}
+
+.operator-app .app-header,
+.operator-app .app-subnav,
+.operator-app .app-content,
+.operator-app .app-footer {
+    background-color: var(--dalo-background) !important;
+    color: var(--dalo-text) !important;
+}
+
+.operator-app .app-sidebar {
+    background-color: var(--dalo-sage) !important;
+    color: var(--dalo-text) !important;
+}
+
+.operator-app :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--dalo-heading);
+}
+
+/* Status headings must retain the surrounding semantic foreground. */
+.operator-app :is(.alert, .toast, .text-bg-primary, .text-bg-success,
+    .text-bg-danger, .text-bg-warning, .text-bg-info, .text-bg-dark)
+    :is(h1, h2, h3, h4, h5, h6) {
+    color: inherit;
+}
+
+.operator-app .app-primary-nav .nav-link,
+.operator-app .app-subnav .nav-link,
+.operator-app .app-sidebar .nav-link {
+    color: var(--dalo-text) !important;
+}
+
+.operator-app .app-primary-nav .nav-link:hover,
+.operator-app .app-subnav .nav-link:hover {
+    color: var(--dalo-forest) !important;
+}
+
+.operator-app .app-primary-nav .link-active {
+    color: var(--dalo-heading) !important;
+    box-shadow: inset 0 -2px 0 var(--dalo-accent);
+}
+
+.operator-app .app-sidebar .nav-link:hover,
+.operator-app .app-sidebar .nav-link:focus-visible,
+.operator-app .app-sidebar .nav-link.active,
+.operator-app .app-sidebar .management-sidebar-group[data-active="true"] > summary,
+.operator-app .app-sidebar .management-sidebar-group > summary:hover {
+    background-color: var(--dalo-selected);
+}
+
+.operator-app .app-sidebar .nav-link.active {
+    color: var(--dalo-heading) !important;
+    font-weight: 600;
+}
+
+.operator-app .card {
+    --bs-card-bg: var(--dalo-surface);
+    --bs-card-color: var(--dalo-text);
+    --bs-card-border-color: var(--dalo-border);
+    --bs-card-cap-bg: var(--dalo-sage);
+}
+
+.operator-app .dashboard-stat-body {
+    background-color: var(--dalo-surface);
+    color: var(--dalo-text);
+}
+
+.operator-app .dashboard-stat-card .text-bg-light {
+    color: var(--dalo-forest) !important;
+}
+
+/* Leave explicitly semantic table variants and row/cell states intact. */
+.operator-app .table:not(.table-danger):not(.table-warning):not(.table-success):not(.table-info):not(.table-dark) {
+    --bs-table-bg: var(--dalo-surface);
+    --bs-table-color: var(--dalo-text);
+    --bs-table-border-color: var(--dalo-border);
+    --bs-table-striped-bg: var(--dalo-background);
+    --bs-table-striped-color: var(--dalo-text);
+    --bs-table-hover-bg: var(--dalo-sage);
+    --bs-table-hover-color: var(--dalo-text);
+    --bs-table-active-bg: var(--dalo-selected);
+    --bs-table-active-color: var(--dalo-text);
+}
+
+.operator-app .table:not(.table-danger):not(.table-warning):not(.table-success):not(.table-info):not(.table-dark)
+    > :not(caption) > tr:not([class*="table-"]) > th:not([class*="table-"]) {
+    --bs-table-bg: var(--dalo-sage);
+    --bs-table-bg-type: var(--dalo-sage);
+    --bs-table-bg-state: var(--dalo-sage);
+    color: var(--dalo-heading);
+}
+
+:where(.operator-app) .form-control:not(.is-valid):not(.is-invalid),
+:where(.operator-app) .form-select:not(.is-valid):not(.is-invalid) {
+    background-color: var(--dalo-surface);
+    border-color: var(--dalo-border);
+    color: var(--dalo-text);
+}
+
+:where(.operator-app) .form-control:not(.is-valid):not(.is-invalid):focus,
+:where(.operator-app) .form-select:not(.is-valid):not(.is-invalid):focus {
+    border-color: var(--dalo-forest);
+    box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+}
+
+.operator-app .form-control::placeholder {
+    color: var(--dalo-muted);
+}
+
+.operator-app .form-control:disabled,
+.operator-app .form-select:disabled {
+    background-color: var(--dalo-sage);
+    color: var(--dalo-muted);
+}
+
+/* Bootstrap's native validation states take precedence over neutral fields. */
+.operator-app .was-validated :is(.form-control, .form-select):valid {
+    border-color: var(--bs-form-valid-border-color);
+}
+
+.operator-app .was-validated :is(.form-control, .form-select):invalid {
+    border-color: var(--bs-form-invalid-border-color);
+}
+
+.operator-app .was-validated :is(.form-control, .form-select):valid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.25);
+}
+
+.operator-app .was-validated :is(.form-control, .form-select):invalid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-danger-rgb), 0.25);
+}
+
+.operator-app .input-group-text {
+    background-color: var(--dalo-sage);
+    border-color: var(--dalo-border);
+    color: var(--dalo-muted);
+}
+
+.operator-app .form-check-input:checked,
+.operator-app .form-check-input:indeterminate {
+    background-color: var(--dalo-forest);
+    border-color: var(--dalo-forest);
+}
+
+.operator-app .form-check-input:focus {
+    border-color: var(--dalo-forest);
+    box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+}
+
+.operator-app .form-check-input.is-invalid,
+.operator-app .was-validated .form-check-input:invalid {
+    border-color: var(--bs-form-invalid-border-color);
+}
+
+.operator-app .form-check-input.is-valid,
+.operator-app .was-validated .form-check-input:valid {
+    border-color: var(--bs-form-valid-border-color);
+}
+
+.operator-app .form-check-input.is-invalid:focus,
+.operator-app .was-validated .form-check-input:invalid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-danger-rgb), 0.25);
+}
+
+.operator-app .form-check-input.is-valid:focus,
+.operator-app .was-validated .form-check-input:valid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-success-rgb), 0.25);
+}
+
+.operator-app .btn-primary {
+    --bs-btn-color: #203015;
+    --bs-btn-bg: var(--dalo-accent);
+    --bs-btn-border-color: var(--dalo-accent);
+    --bs-btn-hover-color: #203015;
+    --bs-btn-hover-bg: #7fb737;
+    --bs-btn-hover-border-color: #7fb737;
+    --bs-btn-active-color: #203015;
+    --bs-btn-active-bg: #7fb737;
+    --bs-btn-active-border-color: #7fb737;
+    --bs-btn-disabled-color: #203015;
+    --bs-btn-disabled-bg: var(--dalo-accent);
+    --bs-btn-disabled-border-color: var(--dalo-accent);
+    --bs-btn-focus-shadow-rgb: 70, 103, 52;
+}
+
+.operator-app :is(.btn-secondary, .btn-outline-secondary, .btn-light, .btn-outline-primary) {
+    --bs-btn-color: var(--dalo-text);
+    --bs-btn-bg: var(--dalo-surface);
+    --bs-btn-border-color: var(--dalo-border);
+    --bs-btn-hover-color: var(--dalo-heading);
+    --bs-btn-hover-bg: var(--dalo-sage);
+    --bs-btn-hover-border-color: var(--dalo-muted);
+    --bs-btn-active-color: var(--dalo-heading);
+    --bs-btn-active-bg: var(--dalo-selected);
+    --bs-btn-active-border-color: var(--dalo-muted);
+    --bs-btn-disabled-color: var(--dalo-muted);
+    --bs-btn-disabled-bg: var(--dalo-surface);
+    --bs-btn-disabled-border-color: var(--dalo-border);
+    --bs-btn-focus-shadow-rgb: 70, 103, 52;
+}
+
+.operator-app .pagination {
+    --bs-pagination-color: var(--dalo-forest);
+    --bs-pagination-bg: var(--dalo-surface);
+    --bs-pagination-border-color: var(--dalo-border);
+    --bs-pagination-hover-color: var(--dalo-heading);
+    --bs-pagination-hover-bg: var(--dalo-sage);
+    --bs-pagination-hover-border-color: var(--dalo-border);
+    --bs-pagination-focus-color: var(--dalo-heading);
+    --bs-pagination-focus-bg: var(--dalo-sage);
+    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+    --bs-pagination-active-color: var(--dalo-heading);
+    --bs-pagination-active-bg: var(--dalo-selected);
+    --bs-pagination-active-border-color: var(--dalo-border);
+    --bs-pagination-disabled-color: var(--dalo-muted);
+    --bs-pagination-disabled-bg: var(--dalo-background);
+    --bs-pagination-disabled-border-color: var(--dalo-border);
+}
+
+.operator-app .form-range::-webkit-slider-thumb {
+    background-color: var(--dalo-forest);
+}
+
+.operator-app .form-range::-moz-range-thumb {
+    background-color: var(--dalo-forest);
+}
+
+.operator-app .progress {
+    --bs-progress-bg: var(--dalo-sage);
+    --bs-progress-bar-bg: var(--dalo-forest);
+}
+
+.operator-app .nav-link:focus-visible {
+    outline: 2px solid var(--dalo-forest);
+    outline-offset: -2px;
+    box-shadow: none;
+}
+
+.operator-app .nav-tabs {
+    --bs-nav-tabs-border-color: var(--dalo-border);
+    --bs-nav-tabs-link-hover-border-color: var(--dalo-border);
+    --bs-nav-tabs-link-active-color: var(--dalo-heading);
+    --bs-nav-tabs-link-active-bg: var(--dalo-surface);
+    --bs-nav-tabs-link-active-border-color: var(--dalo-border) var(--dalo-border) var(--dalo-surface);
+}
+
+.operator-app .nav-pills {
+    --bs-nav-pills-link-active-color: var(--dalo-heading);
+    --bs-nav-pills-link-active-bg: var(--dalo-selected);
+}
+
+.operator-app .dropdown-menu {
+    --bs-dropdown-bg: var(--dalo-surface);
+    --bs-dropdown-color: var(--dalo-text);
+    --bs-dropdown-border-color: var(--dalo-border);
+    --bs-dropdown-divider-bg: var(--dalo-border);
+    --bs-dropdown-link-color: var(--dalo-text);
+    --bs-dropdown-link-hover-color: var(--dalo-heading);
+    --bs-dropdown-link-hover-bg: var(--dalo-sage);
+    --bs-dropdown-link-active-color: var(--dalo-heading);
+    --bs-dropdown-link-active-bg: var(--dalo-selected);
+    --bs-dropdown-link-disabled-color: var(--dalo-muted);
+}
+
+.operator-app .accordion {
+    --bs-accordion-bg: var(--dalo-surface);
+    --bs-accordion-color: var(--dalo-text);
+    --bs-accordion-border-color: var(--dalo-border);
+    --bs-accordion-btn-color: var(--dalo-text);
+    --bs-accordion-btn-bg: var(--dalo-surface);
+    --bs-accordion-active-color: var(--dalo-heading);
+    --bs-accordion-active-bg: var(--dalo-selected);
+    --bs-accordion-btn-active-icon: var(--bs-accordion-btn-icon);
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.25rem rgba(70, 103, 52, 0.16);
+}
+
+.operator-app .list-group {
+    --bs-list-group-bg: var(--dalo-surface);
+    --bs-list-group-color: var(--dalo-text);
+    --bs-list-group-border-color: var(--dalo-border);
+    --bs-list-group-action-color: var(--dalo-text);
+    --bs-list-group-action-hover-color: var(--dalo-heading);
+    --bs-list-group-action-hover-bg: var(--dalo-sage);
+    --bs-list-group-action-active-color: var(--dalo-heading);
+    --bs-list-group-action-active-bg: var(--dalo-selected);
+    --bs-list-group-active-color: var(--dalo-heading);
+    --bs-list-group-active-bg: var(--dalo-selected);
+    --bs-list-group-active-border-color: var(--dalo-border);
+}
+
+.operator-app .modal {
+    --bs-modal-bg: var(--dalo-surface);
+    --bs-modal-color: var(--dalo-text);
+    --bs-modal-border-color: var(--dalo-border);
+    --bs-modal-header-border-color: var(--dalo-border);
+    --bs-modal-footer-border-color: var(--dalo-border);
+}
+
+.operator-app .popover {
+    --bs-popover-bg: var(--dalo-surface);
+    --bs-popover-body-color: var(--dalo-text);
+    --bs-popover-header-bg: var(--dalo-sage);
+    --bs-popover-header-color: var(--dalo-heading);
+    --bs-popover-border-color: var(--dalo-border);
+}

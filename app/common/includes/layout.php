@@ -95,6 +95,12 @@ function print_html_prologue($title, $lang='en', $extra_css=array(), $extra_js=a
                              $common_css=DEFAULT_COMMON_PROLOGUE_CSS, $common_js=DEFAULT_COMMON_PROLOGUE_JS) {
     global $configValues;
 
+    // The shared layout also serves the users portal; theme only operators.
+    $operator_root = isset($configValues['OPERATORS_ROOT']) ? realpath($configValues['OPERATORS_ROOT']) : false;
+    $is_operator_portal = $operator_root !== false && isset($_SERVER['SCRIPT_FILENAME'])
+        && realpath(dirname($_SERVER['SCRIPT_FILENAME'])) === $operator_root;
+    $body_attribute = $is_operator_portal ? ' class="operator-app"' : '';
+
     $lang = strtolower($lang);
     $dir = ($lang === 'ar') ? "rtl" : "ltr";
     $title = ucfirst($title) . " :: daloRADIUS";
@@ -122,6 +128,9 @@ EOF;
         $extra_css[] = 'static/css/management-sidebar.css?v=2';
     }
     $css = array_merge($common_css, $extra_css);
+    if ($is_operator_portal) {
+        $css[] = 'static/css/operator-theme.css?v=1';
+    }
     foreach ($css as $href) {
         printf('<link rel="stylesheet" href="%s">' . "\n", $href);
     }
@@ -144,7 +153,7 @@ EOF;
     echo <<<EOF
 </head>
 
-<body>
+<body{$body_attribute}>
     <div class="app-page">
 
 EOF;
