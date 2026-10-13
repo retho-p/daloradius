@@ -64,7 +64,7 @@
     // print HTML prologue
     $title = t('button', 'Dashboard');
 
-    print_html_prologue($title, $langCode, array('static/css/operator-dashboard.css?v=2'));
+    print_html_prologue($title, $langCode, array('static/css/operator-dashboard.css?v=3'));
 
     // Consolidated SQL queries
     $cardRows=dashboard_rows(sprintf("SELECT COUNT(DISTINCT ui.username) FROM %s AS rc,%s AS ui WHERE ui.username=rc.username AND (rc.attribute='Auth-Type' OR rc.attribute LIKE '%%-Password')",dashboard_table('CONFIG_DB_TBL_RADCHECK'),dashboard_table('CONFIG_DB_TBL_DALOUSERINFO')));
@@ -147,7 +147,7 @@ HTML;
         [
             "title" => t('submenu', 'Users'),
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_users),
-            "linkText" => t('dashboard', 'GoToUsersList'),
+            "linkText" => 'View users',
             "linkURL" => "mng-list-all.php",
             "accent" => "users",
             "icon" => "people-fill"
@@ -155,7 +155,7 @@ HTML;
         [
             "title" => t('submenu', 'Nas'),
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_nas),
-            "linkText" => t('dashboard', 'GoToNASList'),
+            "linkText" => 'View NAS',
             "linkURL" => "mng-rad-nas-list.php",
             "accent" => "nas",
             "icon" => "router-fill"
@@ -163,7 +163,7 @@ HTML;
         [
             "title" => t('submenu', 'Hotspots'),
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_hotspots),
-            "linkText" => t('dashboard', 'GoToHotspotsList'),
+            "linkText" => 'View hotspots',
             "linkURL" => "mng-hs-list.php",
             "accent" => "hotspots",
             "icon" => "wifi"
