@@ -86,6 +86,11 @@ if ($detected_category === 'mng') {
     return;
 }
 
+if ($detected_category === 'rep') {
+    include __DIR__ . '/reports.php';
+    return;
+}
+
 $sidebar_file = sprintf("include/menu/sidebar/%s/%s.php", $detected_category, $detected_subcategory);
 if (file_exists($sidebar_file)) {
     include($sidebar_file);

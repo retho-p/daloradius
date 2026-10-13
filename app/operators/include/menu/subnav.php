@@ -47,14 +47,8 @@ $subnav["config"] = array(
                             'Mail' => 'config-mail-settings.php',
                         );
 
-// rep subnav elements
-$subnav["rep"] = array(
-                            'General' => 'rep-main.php',
-                            'Logs' => 'rep-logs.php',
-                            'Status' => 'rep-stat.php',
-                            'Batch Users' => 'rep-batch.php',
-                            'Dashboard' => 'rep-hb.php',
-                        );
+// Reports categories now live in the collapsible sidebar.
+$subnav["rep"] = array();
 
 // mng subnav elements
 // Management categories now live in the collapsible sidebar.
