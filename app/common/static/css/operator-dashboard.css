@@ -43,7 +43,6 @@
     margin: 0;
     padding: 0.625rem 0.75rem;
     background-color: var(--dalo-selected, #e8efdf);
-    border-inline-start: 3px solid var(--dalo-forest, #466734);
     border-bottom: 1px solid var(--dalo-border, #d9dfd1);
     color: var(--dalo-heading, #293b28);
 }
