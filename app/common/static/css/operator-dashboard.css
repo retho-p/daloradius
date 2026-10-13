@@ -1,0 +1,69 @@
+/* Home dashboard: stronger category accents without changing status colors. */
+.operator-app .dashboard-stat-card {
+    --dashboard-accent: #466734;
+    --dashboard-accent-rgb: 70, 103, 52;
+    --dashboard-tint: #edf3e8;
+    border-block-start: 3px solid var(--dashboard-accent);
+}
+
+.operator-app .dashboard-stat-card--nas {
+    --dashboard-accent: #58727d;
+    --dashboard-accent-rgb: 88, 114, 125;
+    --dashboard-tint: #edf2f4;
+}
+
+.operator-app .dashboard-stat-card--hotspots {
+    --dashboard-accent: #667445;
+    --dashboard-accent-rgb: 102, 116, 69;
+    --dashboard-tint: #f1f3e8;
+}
+
+.operator-app .dashboard-stat-icon {
+    background-color: var(--dashboard-accent);
+    color: #fff;
+}
+
+.operator-app .dashboard-stat-card .btn {
+    --bs-btn-color: var(--dashboard-accent);
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: var(--dashboard-accent);
+    --bs-btn-hover-color: var(--dashboard-accent);
+    --bs-btn-hover-bg: var(--dashboard-tint);
+    --bs-btn-hover-border-color: var(--dashboard-accent);
+    --bs-btn-active-color: var(--dashboard-accent);
+    --bs-btn-active-bg: var(--dashboard-tint);
+    --bs-btn-active-border-color: var(--dashboard-accent);
+    --bs-btn-focus-shadow-rgb: var(--dashboard-accent-rgb);
+}
+
+.operator-app .dashboard-data-panel {
+    background-color: var(--dalo-surface, #fff);
+    border: 1px solid var(--dalo-border, #d9dfd1);
+    border-radius: var(--bs-border-radius);
+    overflow: hidden;
+}
+
+.operator-app .dashboard-section-heading {
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    background-color: var(--dalo-selected, #e8efdf);
+    border-inline-start: 3px solid var(--dalo-forest, #466734);
+    border-bottom: 1px solid var(--dalo-border, #d9dfd1);
+    color: var(--dalo-heading, #293b28);
+}
+
+.operator-app .dashboard-section-heading h1 {
+    min-width: 0;
+}
+
+.operator-app .dashboard-section-heading > a {
+    flex-shrink: 0;
+}
+
+.operator-app .dashboard-data-panel > .dashboard-table-wrapper {
+    padding: 0.75rem;
+}
+
+.operator-app .dashboard-data-panel > .col-12 > .alert {
+    margin: 0.75rem;
+}

@@ -64,7 +64,7 @@
     // print HTML prologue
     $title = t('button', 'Dashboard');
 
-    print_html_prologue($title, $langCode);
+    print_html_prologue($title, $langCode, array('static/css/operator-dashboard.css?v=1'));
 
     // Consolidated SQL queries
     $cardRows=dashboard_rows(sprintf("SELECT COUNT(DISTINCT ui.username) FROM %s AS rc,%s AS ui WHERE ui.username=rc.username AND (rc.attribute='Auth-Type' OR rc.attribute LIKE '%%-Password')",dashboard_table('CONFIG_DB_TBL_RADCHECK'),dashboard_table('CONFIG_DB_TBL_DALOUSERINFO')));
@@ -77,15 +77,15 @@
 
     function print_title($title, $href, $icon) {
         echo <<<HTML
-        <span class="d-flex align-items-center justify-content-start mb-2">
+        <header class="dashboard-section-heading d-flex align-items-center justify-content-start">
             <h1 class="fs-4 m-0">{$title}</h1>
             <a class="ms-2 text-decoration-none" href="{$href}"><i class="bi $icon fs-6"></i></a>
-        </span>
+        </header>
     HTML;
     }
 
     function print_dashboard_table_head($headers) {
-        echo '<div class="table-responsive dashboard-table-wrapper mb-3">';
+        echo '<div class="table-responsive dashboard-table-wrapper">';
         echo '<table class="table table-hover table-striped dashboard-table"><tr>';
 
         foreach ($headers as $header) {
@@ -120,12 +120,12 @@
         EOF;
     }
 
-    function generateCard($title, $total, $linkText, $linkURL, $bgColor, $icon) {
+    function generateCard($title, $total, $linkText, $linkURL, $accent, $icon) {
         return <<<HTML
 <div class="col-md-4 m-0 p-0">
-    <div class="card dashboard-stat-card m-1 overflow-hidden">
+    <div class="card dashboard-stat-card dashboard-stat-card--{$accent} m-1 overflow-hidden">
         <div class="row g-0">
-            <div class="d-none d-md-flex col-md-2 text-bg-{$bgColor} align-items-center justify-content-center" style="--bs-bg-opacity: .9;">
+            <div class="d-none d-md-flex col-md-2 dashboard-stat-icon align-items-center justify-content-center">
                 <i class="bi bi-{$icon} fs-2"></i>
             </div>
             <div class="col-md-10 p-1 d-flex align-items-center justify-content-center flex-column dashboard-stat-body">
@@ -149,7 +149,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_users),
             "linkText" => t('dashboard', 'GoToUsersList'),
             "linkURL" => "mng-list-all.php",
-            "bgColor" => "light",
+            "accent" => "users",
             "icon" => "people-fill"
         ],
         [
@@ -157,7 +157,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_nas),
             "linkText" => t('dashboard', 'GoToNASList'),
             "linkURL" => "mng-rad-nas-list.php",
-            "bgColor" => "light",
+            "accent" => "nas",
             "icon" => "router-fill"
         ],
         [
@@ -165,7 +165,7 @@ HTML;
             "total" => sprintf("%s: <strong>%d</strong>", t('all', 'Total'), $total_hotspots),
             "linkText" => t('dashboard', 'GoToHotspotsList'),
             "linkURL" => "mng-hs-list.php",
-            "bgColor" => "light",
+            "accent" => "hotspots",
             "icon" => "wifi"
         ]
     ];
@@ -191,7 +191,7 @@ HTML;
     // Print cards using parameters
     echo '<div class="row mb-4">';
     foreach ($card_params as $params) {
-        echo generateCard($params["title"], $params["total"], $params["linkText"], $params["linkURL"], $params["bgColor"], $params["icon"]);
+        echo generateCard($params["title"], $params["total"], $params["linkText"], $params["linkURL"], $params["accent"], $params["icon"]);
     }
     echo '</div>';
 
@@ -205,7 +205,7 @@ HTML;
     $res = dashboard_rows($sql);
     $numrows = count($res);
 
-    echo '<div class="col-12 col-xl-6 m-0 px-3">';
+    echo '<div class="col-12 col-xl-6 m-0 px-3"><section class="dashboard-data-panel">';
     $title = t('button', 'LastConnectionAttempts');
     print_title($title, "rep-lastconnect.php", "bi-box-arrow-up-right");
 
@@ -243,7 +243,7 @@ HTML;
         print_dashboard_info_message(t('messages', 'noDataToShow'));
     }
 
-    echo '</div>';
+    echo '</section></div>';
     $sql = sprintf("SELECT `username`, `acctstarttime` FROM %s
                      WHERE `acctstoptime` IS NULL OR `acctstoptime`='0000-00-00 00:00:00'
                      ORDER BY `acctstarttime` DESC LIMIT 10",
@@ -251,7 +251,7 @@ HTML;
     $res = dashboard_rows($sql);
     $numrows = count($res);
 
-    echo '<div class="col-12 col-xl-6 m-0 px-3">';
+    echo '<div class="col-12 col-xl-6 m-0 px-3"><section class="dashboard-data-panel">';
     print_title(t('dashboard', 'CurrentlyOnline'), "rep-online.php?orderBy=acctstarttime&orderType=desc", "bi-box-arrow-up-right");
 
     if ($numrows > 0) {
@@ -273,7 +273,7 @@ HTML;
     }
 
     echo <<<HTML
-        </div>
+        </section></div>
     </div>
     <div class="row">
 HTML;
@@ -298,7 +298,7 @@ HTML;
     $href = sprintf('rep-topusers.php?startdate=%s&enddate=%s&orderBy=Time&orderType=desc', $one_month_ago, $today);
     $title = t('dashboard', 'LastMonthTopUsers');
 
-    echo '<div class="col-12 m-0 px-3">';
+    echo '<div class="col-12 m-0 px-3"><section class="dashboard-data-panel">';
     print_title($title, $href, 'bi-box-arrow-up-right');
 
     if ($numrows > 0) {
@@ -322,7 +322,7 @@ HTML;
         print_dashboard_info_message(t('messages', 'noDataToShow'));
     }
 
-    echo '</div>';
+    echo '</section></div>';
 
     echo '</div>';
 
