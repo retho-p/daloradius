@@ -5,6 +5,7 @@
 .activity-view.active { font-weight: 600; border-bottom-color: currentColor; }
 .activity-view:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .activity-session-mode { display: flex; gap: .35rem; margin-bottom: .75rem; }
+.activity-session-mode [aria-current="true"] { font-weight: 600; background: var(--bs-tertiary-bg); }
 .activity-search { padding: .875rem; border-radius: .25rem; box-shadow: none; }
 .activity-search-row { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
 .activity-search-row > div { min-width: 0; }
@@ -18,7 +19,7 @@
 .activity-advanced > .activity-search-row > div { flex: 1 1 10rem; max-width: 20rem; }
 .activity-note { color: var(--bs-secondary-color); font-size: .8125rem; margin: .875rem 0; max-width: 85rem; }
 .activity-result-bar, .activity-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .625rem; margin: .75rem 0; font-size: .875rem; }
-.activity-table-wrap { overflow-x: auto; border: 1px solid var(--bs-border-color); border-radius: .25rem; }
+.activity-table-wrap { overflow-x: auto; padding-bottom: 1px; border: 1px solid var(--bs-border-color); border-radius: .25rem; }
 .activity-table { margin-bottom: 0; font-size: .8125rem; }
 .activity-table th { white-space: nowrap; background-color: var(--bs-tertiary-bg); }
 .activity-table td, .activity-table th { padding: .5rem .625rem; vertical-align: middle; }

@@ -107,7 +107,7 @@ function activity_cell($key, $value) {
 }
 
 $title = 'User activity';
-print_html_prologue($title, $langCode, array('static/css/user-activity.css?v=1'), array('static/js/user-activity.js?v=1'));
+print_html_prologue($title, $langCode, array('static/css/user-activity.css?v=2'), array('static/js/user-activity.js?v=1'));
 print_title_and_help($title, '');
 $commonFilters = array_intersect_key($activityFilters, array_flip(array('username', 'startdate', 'enddate', 'per_page')));
 $hasPeriod = $view !== 'sessions' || $activityFilters['state'] === 'history';
