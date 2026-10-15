@@ -73,6 +73,8 @@ if ($detected_category == "mng") {
     } else {
         $detected_subcategory = $tmp[1];
     }
+} else if ($detected_category === 'config' && $basename === 'config-operator-2fa') {
+    $detected_subcategory = 'operators';
 } else {
     $detected_subcategory = $tmp[1];
 }
@@ -88,6 +90,11 @@ if ($detected_category === 'mng') {
 
 if ($detected_category === 'rep') {
     include __DIR__ . '/reports.php';
+    return;
+}
+
+if (in_array($detected_category, array('acct', 'bill', 'config'), true)) {
+    include __DIR__ . '/section-navigation.php';
     return;
 }
 

@@ -128,8 +128,7 @@ EOF;
     }
 
     $sidebar_page_name = basename($_SERVER['PHP_SELF']);
-    if (strpos($sidebar_page_name, 'mng-') === 0 || strpos($sidebar_page_name, 'rep-') === 0
-        || strpos($sidebar_page_name, 'home-') === 0) {
+    if (preg_match('/^(?:home|mng|rep|acct|bill|config)-/', $sidebar_page_name)) {
         $extra_css[] = 'static/css/management-sidebar.css?v=2';
     }
     $css = array_merge($common_css, $extra_css);

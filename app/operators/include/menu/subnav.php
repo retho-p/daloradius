@@ -38,14 +38,8 @@ $subnav["home"] = array();
 $subnav["graphs"] = array();
 
 // config subnav elements
-$subnav["config"] = array(
-                            'General' => 'config-main.php',
-                            'Reporting' => 'config-reports.php',
-                            'Maintenance' => 'config-maint.php',
-                            'Operators' => 'config-operators.php',
-                            'Backup' => 'config-backup.php',
-                            'Mail' => 'config-mail-settings.php',
-                        );
+// Categories now live in the collapsible sidebar.
+$subnav["config"] = array();
 
 // Reports categories now live in the collapsible sidebar.
 $subnav["rep"] = array();
@@ -61,24 +55,12 @@ $subnav["help"] = array();
 $subnav["gis"] = array();
 
 // bill subnav elements
-$subnav["bill"] = array(
-                            'POS' => 'bill-pos.php',
-                            'Plans' => 'bill-plans.php',
-                            'Rates' => 'bill-rates.php',
-                            'Merchant-Transactions' => 'bill-merchant.php',
-                            'Billing-History' => 'bill-history.php',
-                            'Invoices' => 'bill-invoice.php',
-                            'Payments' => 'bill-payments.php',
-                        );
+// Categories now live in the collapsible sidebar.
+$subnav["bill"] = array();
 
 // acct subnav elements
-$subnav["acct"] = array(
-                            'General' => 'acct-main.php',
-                            'Plans' => 'acct-plans.php',
-                            'Custom' => 'acct-custom.php',
-                            'Hotspot' => 'acct-hotspot.php',
-                            'Maintenance' => 'acct-maintenance.php',
-                        );
+// Categories now live in the collapsible sidebar.
+$subnav["acct"] = array();
 
 
 
