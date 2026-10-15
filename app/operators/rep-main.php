@@ -25,6 +25,20 @@
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LIBRARY'], 'checklogin.php' ]);
     $operator = $_SESSION['operator_user'];
 
+    // Preserve the Reports landing for operators who only have other report grants.
+    require_once $configValues['COMMON_INCLUDES'] . '/pdo_connection.php';
+    require_once __DIR__ . '/library/user_activity_access.php';
+    try {
+        $activityLandingPDO = dalo_pdo_connect($configValues, $_SESSION['location_name'] ?? 'default');
+        if (dalo_activity_allowed_views($activityLandingPDO, $configValues, $_SESSION['operator_id'] ?? null)) {
+            header('Location: rep-activity.php');
+            exit;
+        }
+    } catch (Throwable $error) {
+        error_log('User activity landing permission lookup failed: ' . get_class($error));
+    }
+    unset($activityLandingPDO);
+
     include_once implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_LANG'], 'main.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'validation.php' ]);
     include implode(DIRECTORY_SEPARATOR, [ $configValues['COMMON_INCLUDES'], 'layout.php' ]);

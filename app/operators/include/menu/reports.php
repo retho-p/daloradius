@@ -22,6 +22,16 @@ require_once $configValues['COMMON_INCLUDES'] . '/validation.php';
 // Isolate each descriptor's local variables; retain its existing page context.
 $load_reports_sections = function ($category) use ($configValues) {
     global $options_format;
+    if ($category === 'default') {
+        return array(
+            array('title' => t('sidebar', 'UserReports'), 'descriptors' => array(
+                array('type' => 'link', 'label' => 'User activity', 'href' => 'rep-activity.php', 'icon' => 'activity'),
+            )),
+            array('title' => t('sidebar', 'OtherReports'), 'descriptors' => array(
+                array('type' => 'link', 'label' => t('button', 'History'), 'href' => 'rep-history.php', 'icon' => 'clock-history'),
+            )),
+        );
+    }
     include __DIR__ . '/sidebar/rep/' . $category . '.php';
     return $menu['sections'];
 };
@@ -36,6 +46,15 @@ $reports_acl_cache = array();
 $reports_route_allowed = function ($route) use ($configValues, $reports_acl_pdo, &$reports_acl_cache) {
     if ($reports_acl_pdo === null) {
         return false;
+    }
+    if ($route === 'rep-activity.php') {
+        require_once $configValues['OPERATORS_LIBRARY'] . '/user_activity_access.php';
+        try {
+            return !empty(dalo_activity_allowed_views($reports_acl_pdo, $configValues, $_SESSION['operator_id'] ?? null));
+        } catch (Throwable $error) {
+            error_log('User activity navigation permission lookup failed: ' . get_class($error));
+            return false;
+        }
     }
     $permission = str_replace('-', '_', basename($route, '.php'));
     if (!array_key_exists($permission, $reports_acl_cache)) {
