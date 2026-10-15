@@ -106,6 +106,18 @@ function activity_cell($key, $value) {
     return (string) $value;
 }
 
+function activity_reply_badge($value) {
+    $statuses = array(
+        'Access-Accept' => array('Accepted', 'success', 'check-circle-fill'),
+        'Access-Reject' => array('Rejected', 'danger', 'x-circle-fill'),
+    );
+    if (!isset($statuses[$value])) { return activity_escape($value === '' ? 'Unknown' : $value); }
+    list($label, $tone, $icon) = $statuses[$value];
+    return '<span class="badge bg-' . $tone . '-subtle text-' . $tone . '-emphasis border border-' . $tone . '-subtle" title="'
+         . activity_escape($value) . '"><i class="bi bi-' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</span>';
+}
+
+if (isset($activityReport['columns']['reply'])) { $activityReport['columns']['reply'] = 'Result'; }
 $title = 'User activity';
 print_html_prologue($title, $langCode, array('static/css/user-activity.css?v=2'), array('static/js/user-activity.js?v=1'));
 print_title_and_help($title, '');
@@ -177,7 +189,7 @@ $sortable = $activityReport['sortable'] ?? array();
         <?php endforeach; ?>
     </tr></thead><tbody>
         <?php foreach ($activityReport['rows'] as $row): ?><tr>
-            <?php foreach ($activityReport['columns'] as $key => $label): ?><td<?= in_array($key, array('duration', 'upload', 'download', 'sessions'), true) ? ' class="activity-numeric"' : '' ?>><?php if ($key === 'username'): ?><a href="<?= activity_escape(activity_url($activityFilters, array('username' => (string) $row[$key], 'page' => 1))) ?>"><?= activity_escape($row[$key]) ?></a><?php else: ?><?= activity_escape(activity_cell($key, $row[$key] ?? null)) ?><?php endif; ?></td><?php endforeach; ?>
+            <?php foreach ($activityReport['columns'] as $key => $label): ?><td<?= in_array($key, array('duration', 'upload', 'download', 'sessions'), true) ? ' class="activity-numeric"' : '' ?>><?php if ($key === 'username'): ?><a href="<?= activity_escape(activity_url($activityFilters, array('username' => (string) $row[$key], 'page' => 1))) ?>"><?= activity_escape($row[$key]) ?></a><?php elseif ($key === 'reply'): ?><?= activity_reply_badge((string) ($row[$key] ?? '')) ?><?php else: ?><?= activity_escape(activity_cell($key, $row[$key] ?? null)) ?><?php endif; ?></td><?php endforeach; ?>
         </tr><?php endforeach; ?>
     </tbody></table></div>
     <nav class="activity-pagination" aria-label="Report pagination"><span>Page <?= (int) $activityReport['page'] ?> of <?= (int) $activityReport['pages'] ?></span><div>
