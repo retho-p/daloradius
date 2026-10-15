@@ -32,6 +32,11 @@ $load_reports_sections = function ($category) use ($configValues) {
             )),
         );
     }
+    if ($category === 'logs') {
+        return array(array('title' => t('sidebar', 'LogFiles'), 'descriptors' => array(
+            array('type' => 'link', 'label' => 'Log viewer', 'href' => 'rep-logs.php', 'icon' => 'file-text'),
+        )));
+    }
     include __DIR__ . '/sidebar/rep/' . $category . '.php';
     return $menu['sections'];
 };
@@ -53,6 +58,15 @@ $reports_route_allowed = function ($route) use ($configValues, $reports_acl_pdo,
             return !empty(dalo_activity_allowed_views($reports_acl_pdo, $configValues, $_SESSION['operator_id'] ?? null));
         } catch (Throwable $error) {
             error_log('User activity navigation permission lookup failed: ' . get_class($error));
+            return false;
+        }
+    }
+    if ($route === 'rep-logs.php') {
+        require_once $configValues['OPERATORS_LIBRARY'] . '/log_viewer_read.php';
+        try {
+            return !empty(dalo_log_allowed_sources($reports_acl_pdo, $configValues, $_SESSION['operator_id'] ?? null));
+        } catch (Throwable $error) {
+            error_log('Log viewer navigation permission lookup failed: ' . get_class($error));
             return false;
         }
     }

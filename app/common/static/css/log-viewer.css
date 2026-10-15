@@ -1,0 +1,21 @@
+.log-viewer { min-width: 0; }
+.log-sources { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--bs-border-color); }
+.log-sources a { padding: .5rem 0; border-bottom: 2px solid transparent; color: var(--bs-body-color); text-decoration: none; }
+.log-sources a.active { border-bottom-color: currentColor; font-weight: 600; }
+.log-sources a:hover { text-decoration: underline; }
+.log-search { display: flex; flex-direction: row; flex-wrap: wrap; align-items: end; gap: .75rem; padding: .875rem; border-radius: .25rem; box-shadow: none; }
+.log-search label { display: block; font-size: .8125rem; margin-bottom: .25rem; }
+.log-search-field { flex: 1 1 16rem; max-width: 35rem; min-width: 0; }
+.log-search-actions, .log-toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.log-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; margin: .875rem 0; }
+.log-wrap-control { font-size: .8125rem; display: inline-flex; align-items: center; gap: .35rem; }
+.log-metadata { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; color: var(--bs-secondary-color); font-size: .75rem; overflow-wrap: anywhere; }
+.log-metadata code { color: inherit; font-size: inherit; }
+.log-note { font-size: .8125rem; color: var(--bs-secondary-color); margin: .75rem 0; }
+.log-content { padding: .875rem; margin: .75rem 0; min-height: 12rem; max-height: 65vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: .25rem; font-size: .8125rem; line-height: 1.6; tab-size: 4; }
+.log-content.no-wrap { white-space: pre; overflow-wrap: normal; }
+.log-line { display: block; min-height: 1.6em; }
+.log-context { color: var(--bs-secondary-color); }
+.log-content mark { padding: 0; background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
+.log-state { padding: 1.25rem; margin: .75rem 0; border: 1px solid var(--bs-border-color); border-radius: .25rem; background: var(--bs-body-bg); }
+@media (max-width: 575.98px) { .log-search-field { flex-basis: 100%; max-width: none; } .log-search-actions { flex-basis: 100%; } .log-toolbar { align-items: start; } }
