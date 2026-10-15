@@ -60,7 +60,7 @@ function log_view_line($text, $query) {
     return $out . log_view_escape(substr($text, $start));
 }
 $title = 'Logs';
-print_html_prologue($title, $langCode, array('static/css/log-viewer.css?v=1'), array('static/js/log-viewer.js?v=1'));
+print_html_prologue($title, $langCode, array('static/css/log-viewer.css?v=1'), array('static/js/log-viewer.js?v=2'));
 print_title_and_help($title, '');
 ?>
 <section class="log-viewer" aria-label="Log reader">
@@ -79,12 +79,13 @@ print_title_and_help($title, '');
         <div class="log-search-actions"><button class="btn btn-secondary btn-sm" type="submit">Search</button><a class="btn btn-outline-secondary btn-sm" href="<?= log_view_escape(log_view_url(array('source' => $source))) ?>">Reset</a></div>
     </form>
     <div class="log-toolbar">
-        <div class="log-toolbar-actions"><a class="btn btn-outline-secondary btn-sm" href="<?= log_view_escape(log_view_url($logFilters)) ?>">Refresh</a>
+        <div class="log-toolbar-actions"><a id="log-refresh" class="btn btn-outline-secondary btn-sm" href="<?= log_view_escape(log_view_url($logFilters)) ?>">Refresh</a>
             <label class="log-wrap-control"><input id="log-wrap" type="checkbox" checked> Wrap lines</label>
             <button class="btn btn-outline-secondary btn-sm" id="log-copy" type="button" hidden>Copy excerpt</button>
         </div>
-        <?php if ($logResult['state'] === 'ok'): ?><a class="btn btn-outline-secondary btn-sm" href="<?= log_view_escape(log_view_url($logFilters, array('format' => 'text'))) ?>">Download filtered log</a><?php endif; ?>
+        <a id="log-download" class="btn btn-outline-secondary btn-sm" href="<?= log_view_escape(log_view_url($logFilters, array('format' => 'text'))) ?>"<?= $logResult['state'] !== 'ok' ? ' hidden' : '' ?>>Download filtered log</a>
     </div>
+    <div id="log-output">
     <div class="log-metadata">
         <span>Read: <?= log_view_escape($logResult['read_at']) ?></span>
         <?php if ($logResult['path'] !== ''): ?><span>File: <code><?= log_view_escape($logResult['path']) ?></code></span><?php endif; ?>
@@ -98,6 +99,7 @@ print_title_and_help($title, '');
     <?php endif; ?>
     <?php if ($logResult['bounded']): ?><p class="log-note">Search is bounded to the last 2 MiB and at most 20,000 lines. Older content was not inspected; a partial first line is omitted.</p><?php endif; ?>
     <p class="log-note">Local files visible to the web server only. No journal or remote-container access is added by this reader.</p>
+    </div>
     <span id="log-copy-status" class="log-note" role="status" aria-live="polite"></span>
 </section>
 <?php print_footer_and_html_epilogue();
