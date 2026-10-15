@@ -67,7 +67,7 @@ $dir = (strtolower($langCode) === 'ar') ? "rtl" : "ltr";
     <link rel="manifest" href="static/images/favicon/site.webmanifest">
     <link rel="stylesheet" href="static/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/css/icons/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="static/css/operator-login.css?v=2">
+    <link rel="stylesheet" href="static/css/operator-login.css?v=3">
 </head>
 <body class="operator-login">
     <main class="auth-shell">
