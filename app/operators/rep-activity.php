@@ -107,14 +107,8 @@ function activity_cell($key, $value) {
 }
 
 function activity_reply_badge($value) {
-    $statuses = array(
-        'Access-Accept' => array('Accepted', 'success', 'check-circle-fill'),
-        'Access-Reject' => array('Rejected', 'danger', 'x-circle-fill'),
-    );
-    if (!isset($statuses[$value])) { return activity_escape($value === '' ? 'Unknown' : $value); }
-    list($label, $tone, $icon) = $statuses[$value];
-    return '<span class="badge bg-' . $tone . '-subtle text-' . $tone . '-emphasis border border-' . $tone . '-subtle" title="'
-         . activity_escape($value) . '"><i class="bi bi-' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</span>';
+    $class = $value === 'Access-Accept' ? 'text-success' : ($value === 'Access-Reject' ? 'text-danger' : '');
+    return '<span class="' . $class . '">' . activity_escape($value === '' ? 'Unknown' : $value) . '</span>';
 }
 
 if (isset($activityReport['columns']['reply'])) { $activityReport['columns']['reply'] = 'Result'; }
