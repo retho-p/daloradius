@@ -1,0 +1,38 @@
+/* Standalone operator error page; reuse the application Light/Night palette. */
+.operator-error { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; }
+.operator-error .error-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: .75rem 1.5rem;
+}
+.operator-error .app-brand { display: inline-flex; flex-shrink: 0; }
+.operator-error .app-brand img { object-fit: contain; }
+.operator-error .error-main {
+    flex: 1; display: grid; place-items: center; padding: 3rem 1.5rem;
+}
+.operator-error .error-card {
+    width: 100%; max-width: 840px; display: grid; grid-template-columns: 240px minmax(0, 1fr);
+    overflow: hidden; border-radius: .5rem;
+}
+.operator-error .error-status {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .25rem; padding: 2rem 1rem; background: var(--dalo-sage);
+    border-right: 1px solid var(--dalo-border); color: var(--dalo-heading);
+}
+.operator-error .error-code { font-size: 6rem; font-weight: 600; line-height: 1.1; letter-spacing: -.06em; }
+.operator-error .error-status-label { font-size: .7rem; font-weight: 600; letter-spacing: .14em; color: var(--dalo-muted); }
+.operator-error .error-copy { padding: 2.5rem; }
+.operator-error .error-eyebrow { color: var(--dalo-muted); font-size: .75rem; letter-spacing: .1em; margin-bottom: .75rem; }
+.operator-error h1 { font-size: clamp(1.6rem, 4vw, 2rem); margin-bottom: 1rem; }
+.operator-error .error-copy > p { line-height: 1.65; }
+.operator-error .error-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
+.operator-error .error-actions .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.operator-error a:focus-visible { outline: 2px solid var(--dalo-forest); outline-offset: 4px; }
+.operator-error .error-footer { text-align: center; padding: 1rem 1.5rem; }
+@media (max-width: 575.98px) {
+    .operator-error .error-header { padding: .75rem 1rem; }
+    .operator-error .error-main { padding: 1.5rem 1rem; }
+    .operator-error .error-card { grid-template-columns: minmax(0, 1fr); }
+    .operator-error .error-status { border-right: 0; border-bottom: 1px solid var(--dalo-border); padding: 1.5rem; }
+    .operator-error .error-code { font-size: 4.5rem; }
+    .operator-error .error-copy { padding: 1.5rem; }
+}
