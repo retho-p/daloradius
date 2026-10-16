@@ -55,7 +55,6 @@ $base = htmlspecialchars($base, ENT_QUOTES, 'UTF-8');
                 <p class="text-body-secondary">Check the address or continue from one of the pages below.</p>
                 <div class="error-actions">
                     <a class="btn btn-primary" href="<?= $base ?>index.php">Back to home</a>
-                    <a class="btn btn-outline-secondary" href="<?= $base ?>mng-list-all.php">View users</a>
                 </div>
             </div>
         </section>
