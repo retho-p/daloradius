@@ -29,7 +29,7 @@ if (strpos($_SERVER['PHP_SELF'], '/include/menu/nav.php') !== false) {
 
 $nav = array(
                 "home"   => array( 'Home', 'index.php', ),
-                "mng"    => array( 'Managment', 'mng-main.php', ),
+                "mng"    => array( 'Managment', 'mng-list-all.php', ),
                 "rep"    => array( 'Reports', 'rep-main.php', ),
                 "acct"   => array( 'Accounting', 'acct-main.php', ),
                 "bill"   => array( 'Billing', 'bill-main.php', ),
