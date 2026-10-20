@@ -260,6 +260,20 @@ function tables_exist {
     done
 }
 
+function ensure_dictionary {
+    # The dictionary is bundled separately from the main daloRADIUS schema.
+    # Its SQL file drops/recreates the table, so never import it over an
+    # existing dictionary (which may contain deployment-specific attributes).
+    if table_exists "dictionary"; then
+        return
+    fi
+
+    echo "Initializing missing daloRADIUS dictionary table."
+    mysql --defaults-extra-file="$MYSQL_DEFAULTS_FILE" "$MYSQL_DATABASE" \
+        < "$DALORADIUS_PATH/contrib/db/mariadb-daloradius-dictionaries.sql"
+    echo "daloRADIUS dictionary initialization completed."
+}
+
 function run_schema_migrations {
     # One database-scoped ledger for Docker, the upgrader and manual installs.
     # A failure exits before Apache starts; do not mark or hide failed SQL.
@@ -306,6 +320,9 @@ else
     date > "$DB_LOCK"
 fi
 
+# Check outside DB_LOCK so already-initialized deployments missing the
+# dictionary are repaired without reimporting the application schema.
+ensure_dictionary
 run_schema_migrations
 if [[ "$MIGRATE_ONLY" == true ]]; then
     echo "Schema migration completed; application services were not started."

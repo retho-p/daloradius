@@ -513,12 +513,12 @@ EOF;
             foreach ($attributeRows as $row) {
 
                 foreach ($row as $i => $v) {
-                    $row[$i] = htmlspecialchars($row[$i], ENT_QUOTES, 'UTF-8');
+                    $row[$i] = htmlspecialchars((string) ($row[$i] ?? ''), ENT_QUOTES, 'UTF-8');
                 }
 
                 $id = $row[5];
                 $id__attribute = sprintf('%s__%s', $id, $row[0]);
-                $name = sprintf('editValues%s[]', $id);
+                $name = sprintf('editValues_radcheck_%s[]', $id);
                 $type = (preg_match("/-Password$/", $row[0])) ? $hiddenPassword : "text";
                 $onclick = sprintf("document.getElementById('form-%d-radcheck').submit()", $id);
 
@@ -563,12 +563,12 @@ EOF;
             foreach ($attributeRows as $row) {
 
                 foreach ($row as $i => $v) {
-                    $row[$i] = htmlspecialchars($row[$i], ENT_QUOTES, 'UTF-8');
+                    $row[$i] = htmlspecialchars((string) ($row[$i] ?? ''), ENT_QUOTES, 'UTF-8');
                 }
 
                 $id = $row[5];
                 $id__attribute = sprintf('%s__%s', $id, $row[0]);
-                $name = sprintf('editValues%s[]', $id);
+                $name = sprintf('editValues_radreply_%s[]', $id);
                 $type = (preg_match("/-Password$/", $row[0])) ? $hiddenPassword : "text";
                 $onclick = sprintf("document.getElementById('form-%d-radreply').submit()", $id);
 
