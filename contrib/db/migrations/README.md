@@ -73,11 +73,9 @@ executed successfully, not necessarily that it changed a row or column.
 without running its old NOT NULL statement. Later runs report `SKIP` for all
 successfully recorded migrations.
 
-Native tests cover both all-seven-manually-applied and partially-upgraded
-legacy databases without history, including retained LDAP NULL passwords,
-existing ACL choices and absence of duplicate ACL entries. This is not a
-guarantee for arbitrarily customized schemas, altered historical SQL or future
-non-idempotent migrations: keep a verified backup and use a maintenance window.
+This does not guarantee compatibility with arbitrarily customized schemas,
+altered historical SQL or future non-idempotent migrations: keep a verified
+backup and use a maintenance window.
 The runner does not silently mark every migration as applied without processing
 it, and it has no force/baseline switch.
 
@@ -100,28 +98,3 @@ SQL error codes rather than driver messages that might disclose data.
 The runner executes trusted repository SQL, not user-supplied SQL. New migrations
 must be reviewed for safe ordering and their own idempotence. Files using mysql
 client commands such as `DELIMITER`, `SOURCE` or `USE` are not supported.
-
-## Regression tests
-
-```sh
-python3 tests/test-db-migrations.py
-```
-
-This runs PHP/mysqli and MariaDB 11.8 in disposable Docker fixtures, without
-using the installed application's database. Override `DALORADIUS_TEST_PHP_IMAGE`
-if needed with an image containing PHP CLI and mysqli. No ports are published.
-It verifies preview, upgrade, repeat execution, data preservation, current
-schema with LDAP NULL passwords, history checks, and a real late SQL failure.
-
-For a native Debian/MariaDB installation, an additional suite runs without
-Docker (requires local MariaDB root socket access and PHP CLI/mysqli):
-
-```sh
-sudo python3 tests/test-db-migrations-native.py
-```
-
-It creates and removes uniquely named test databases and a SELECT-only test
-account. It does not use the application's database. This suite also exercises
-real advisory-lock contention, permission failures, incomplete-schema preflight,
-and explicit manual recovery after a partial migration. Schema checks reduce
-obvious failures but do not make DDL atomic.

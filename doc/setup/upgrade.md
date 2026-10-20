@@ -69,8 +69,8 @@ Stop any additional scheduled/custom writers yourself. Named database locations
 are not discovered automatically: migrate each separately. Backups are kept in a
 unique directory printed by the script. A successful checksum/read-back verifies
 file integrity, not that an arbitrary production backup is restorable; rehearse
-restoration separately. Native regression tests restore a generated backup into
-another database and compare its full contents.
+restoration separately by restoring the generated dump into a separate database
+and comparing its contents.
 
 ### Failure recovery
 
@@ -161,20 +161,3 @@ starting Apache or cron**, while both application writers remain stopped. It
 requires a running database. A first-ever installation uses ordinary Compose
 startup. The web entrypoint later skips the migrations recorded by this command. Do not edit historical SQL to make a
 checksum mismatch disappear.
-
-## Focused regression commands
-
-```sh
-python3 tests/test-db-migrations.py
-python3 tests/test-upgrade-docker.py
-# Native Debian VM: briefly stops/restarts its real Apache/FreeRADIUS services.
-sudo python3 tests/test-db-migrations-native.py
-sudo python3 tests/test-upgrade-native.py
-```
-
-Docker fixtures use isolated names and disposable storage, preserving the normal
-stack. Set `DALORADIUS_TEST_PHP_IMAGE` for the candidate web image and
-`DALORADIUS_OLD_IMAGE` for the baseline. Build the candidate from this checkout
-before the entrypoint tests. Native tests need MariaDB root socket access;
-`test-upgrade-native.py` additionally needs an `upstream/master` Git ref and
-active standard Debian services. Fixture failures are not hidden as successes.
