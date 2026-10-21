@@ -24,7 +24,6 @@ CURRENT_COMMIT=""
 TARGET_COMMIT=""
 UPGRADE_STARTED=false
 APACHE_RESTORE_REQUIRED=false
-FR_RESTORE_REQUIRED=false
 STAGE_DIR=""
 RUNNER=""
 
@@ -66,7 +65,8 @@ not create backups or automatically roll back application/schema changes.
 Before --apply, back up the database, configuration and local application data
 using your normal tools, and verify that you can restore them.
 
---apply interrupts the web portals and RADIUS authentication/accounting during the upgrade.
+--apply stops Apache during the upgrade, interrupting the web portals.
+FreeRADIUS and MariaDB services are not managed by this helper.
 
 Examples:
   setup/upgrade.sh --check --ref origin/master
@@ -81,16 +81,12 @@ cleanup() {
 handle_failure() {
     [[ "$APPLY" == true ]] || return 0
     if [[ "$UPGRADE_STARTED" == true ]]; then
-        systemctl stop apache2 freeradius || warn "Could not stop all application writers."
+        systemctl stop apache2 || warn "Could not stop Apache."
         warn "Application/schema changes may have started; no automatic rollback was attempted."
         warn "Source revision: $CURRENT_COMMIT; planned target: $TARGET_COMMIT."
         warn "Inspect the current checkout and migration history. Repair or restore using your own backups."
-        warn "Keep Apache/FreeRADIUS stopped until recovery is verified."
+        warn "Keep Apache stopped until recovery is verified."
         return
-    fi
-    if [[ "$FR_RESTORE_REQUIRED" == true ]]; then
-        systemctl start freeradius || warn "Could not restore FreeRADIUS."
-        FR_RESTORE_REQUIRED=false
     fi
     if [[ "$APACHE_RESTORE_REQUIRED" == true ]]; then
         if systemctl start apache2; then
@@ -350,29 +346,21 @@ validate_configuration_access() {
 }
 
 validate_services() {
-    local apache_was_active=$1 radius_was_active=$2
+    local apache_was_active=$1
     validate_configuration_access "$CONFIG_FILE"
-    if [[ "$radius_was_active" == true ]]; then
-        systemctl is-active --quiet freeradius || fail "FreeRADIUS is not active after the upgrade."
-    fi
     if [[ "$apache_was_active" == true ]]; then
         systemctl is-active --quiet apache2 || fail "Apache is not active after the upgrade."
     fi
 }
 
 apply_upgrade() {
-    local apache_was_active=false radius_was_active=false
+    local apache_was_active=false
     warn "No backup will be created. Verify your own database, configuration and local-data backups before upgrading."
-    log "Maintenance: stopping active web/RADIUS writers for the upgrade."
+    log "Maintenance: stopping Apache for the upgrade if active."
     if systemctl is-active --quiet apache2; then
         apache_was_active=true
         APACHE_RESTORE_REQUIRED=true
         systemctl stop apache2
-    fi
-    if systemctl is-active --quiet freeradius; then
-        radius_was_active=true
-        FR_RESTORE_REQUIRED=true
-        systemctl stop freeradius
     fi
     UPGRADE_STARTED=true
     run_migrations
@@ -381,12 +369,9 @@ apply_upgrade() {
     (umask 022; git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null)
     validate_configuration_access "$CONFIG_FILE"
     apachectl configtest >/dev/null
-    freeradius -C
-    [[ "$radius_was_active" == false ]] || systemctl start freeradius
     [[ "$apache_was_active" == false ]] || systemctl start apache2
-    validate_services "$apache_was_active" "$radius_was_active"
+    validate_services "$apache_was_active"
     APACHE_RESTORE_REQUIRED=false
-    FR_RESTORE_REQUIRED=false
     UPGRADE_STARTED=false
     log "Upgrade completed successfully."
     log "Application revision: $TARGET_COMMIT"
@@ -397,7 +382,7 @@ main() {
     validate_host
     require_commands git realpath stat flock sort php runuser tar mktemp cp
     if [[ "$APPLY" == true ]]; then
-        require_commands systemctl apachectl freeradius
+        require_commands systemctl apachectl
     fi
     validate_paths
     validate_git_inputs

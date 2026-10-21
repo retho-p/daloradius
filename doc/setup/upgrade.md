@@ -76,42 +76,47 @@ The supported checkout must be clean, and the selected revision must be a
 tracked/untracked changes are refused rather than discarded. Review and save
 local modifications separately; do not reset them blindly to bypass the check.
 
-**Plan a maintenance window.** Web portals and RADIUS authentication/accounting
-are unavailable while their services are stopped for the upgrade. Complete
-your own backup procedure before invoking `--apply`; the helper only prints a
-reminder and does not check or attest that a backup exists.
+**Plan a web maintenance window.** The helper stops only Apache (`apache2`),
+if it was active, so the daloRADIUS web portals are unavailable during the
+upgrade. It does not stop, start, restart or validate FreeRADIUS, and does not
+require the FreeRADIUS binary or a local FreeRADIUS service. MariaDB is not
+stopped either. Complete your own backup procedure before invoking `--apply`;
+the helper only prints a reminder and does not check or attest that a backup exists.
 
 `--apply` performs the following:
 
 1. Resolve and stage the exact fetched target commit, under a host upgrade lock.
 2. Check configuration access and PHP mysqli/PDO MySQL; when the target contains
    migrations, use the shared runner to check the database and migration history.
-3. Stop Apache and FreeRADIUS if they were running.
+3. Stop Apache if it was running; leave FreeRADIUS untouched.
 4. Run migrations from the **selected target**, using the common runner.
 5. Fast-forward the checkout without changing the existing configuration file,
    then recheck that `www-data` can load it.
-6. Validate Apache/FreeRADIUS configuration, restore their previous active state
+6. Validate Apache configuration, restore its previous active state
    and recheck application-configuration access. Check an authenticated web route
    and your normal RADIUS probes after the helper completes; active services alone
    do not certify every application workflow.
 
-Stop any additional scheduled/custom writers yourself. Named database locations
-are not discovered automatically: migrate each separately.
+Review any scheduled/custom writers and migration-specific maintenance needs
+yourself. If a migration affects tables used by your FreeRADIUS deployment,
+coordinate the required RADIUS maintenance separately; the helper never manages
+that service. Named database locations are not discovered automatically:
+migrate each separately.
 
 ### Failure recovery
 
-If a failure occurs before the application/schema update starts, services
-stopped by the helper are returned to their previous active state. Once the
-update starts, a failure leaves Apache/FreeRADIUS stopped: SQL DDL may already
+If a failure occurs before the application/schema update starts, Apache is
+returned to its previous active state if the helper stopped it. Once the
+update starts, a failure leaves Apache stopped: SQL DDL may already
 have committed, and application files may already have changed.
 **There is no automatic Git reset, configuration restore or database rollback.**
 The helper prints the source and planned target revisions. Inspect the actual
 checkout, configuration and migration history; repair the failed step or restore
 a coherent application/database state using your own backups before starting
-services:
+Apache. FreeRADIUS is left untouched, including on failure:
 
 ```sh
-systemctl start freeradius apache2
+systemctl start apache2
 ```
 
 Do not issue that command until recovery is verified. Do not downgrade only the
