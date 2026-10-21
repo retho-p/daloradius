@@ -4,6 +4,11 @@ Use the path matching how daloRADIUS was installed. All paths use the same
 MariaDB migration runner and the same `daloradius_schema_migrations` history.
 Repeated runs skip recorded SQL; no separate manual SQL loop is needed.
 
+The [legacy manual guidance](../../README.md#legacymanual-procedure) and
+[legacy Docker SQL examples](../../README.docker.md#legacymanual-sql-migrations)
+remain available for older releases. For a version containing this runner, use
+one of the paths below; do not combine both procedures in the same upgrade.
+
 | Installation | Application update | Database update |
 | --- | --- | --- |
 | Standard Debian installation using `setup/install.sh` | `setup/upgrade.sh` | Included |
@@ -27,9 +32,11 @@ the clean-tree check fail. Do not run `install.sh` again to perform an upgrade.
 ```sh
 # From a trusted checkout containing the helper:
 sudo bash setup/upgrade.sh --check --ref origin/master
-sudo bash setup/upgrade.sh --apply --ref origin/master
+# Replace COMMIT_PRINTED_BY_CHECK with the full planned application revision
+# printed by --check, so a moving branch cannot change the reviewed target.
+sudo bash setup/upgrade.sh --apply --ref COMMIT_PRINTED_BY_CHECK
 
-# Replace REF with the exact published release tag or remote branch to deploy.
+# An exact published release tag or commit ID can also be checked first.
 sudo bash setup/upgrade.sh --check --ref REF
 sudo bash setup/upgrade.sh --apply --ref REF
 ```
@@ -40,16 +47,28 @@ The default is `origin/master`. `--root-dir` overrides `/var/www/daloradius`;
 `--remote` overrides `origin`; `--backup-dir` overrides
 `/root/daloradius-backups`. There is no need to enter the database password:
 connection settings come from the installed `daloradius.conf.php`.
-An optional private root-owned `--db-config` supplies backup-client connection
-settings, but must access the same database selected by the application config.
+An optional private root-owned `--db-config` supplies backup credentials and
+client options, for example a separate account with dump privileges. The
+application configuration always determines the host, port, transport, socket
+and database; connection settings in the supplied file cannot redirect the
+backup to another instance. For `localhost`, PHP CLI must have an absolute
+`mysqli.default_socket`; other hosts use TCP. The migration runner still uses
+the application's database account.
 
 `--check` fetches Git refs and creates temporary staging/lock files, but does not
 change deployed application files, stop services or write to the database.
-It checks the target SQL and history before any planned upgrade.
+It checks the target files and migration history before any planned upgrade;
+it does not execute the SQL or prove future DDL privileges. When `--ref` is a
+branch, each invocation fetches its current tip. Use the full commit printed by
+`--check` for `--apply` when you need to deploy exactly the reviewed revision.
 The supported checkout must be clean, and the selected revision must be a
 **fast-forward** of the installed one. Downgrades, divergent branches and local
 tracked/untracked changes are refused rather than discarded. Review and save
 local modifications separately; do not reset them blindly to bypass the check.
+
+**Plan a maintenance window.** Web portals and RADIUS authentication/accounting
+are unavailable while their services are stopped, including the time needed to
+create the backup. Large application archives or databases can extend this window.
 
 `--apply` performs the following:
 
@@ -60,10 +79,13 @@ local modifications separately; do not reset them blindly to bypass the check.
    source/target revisions and SHA-256 manifest.
 5. Run migrations from the **selected target**, using the common runner.
 6. Fast-forward the checkout and merge new sample defaults while retaining local
-   `configValues`, ownership and owner/group permissions (other-user permissions
-   are removed).
-7. Validate Apache/FreeRADIUS configuration and restore their previous active
-   state.
+   `configValues`, ownership, permissions and POSIX ACLs. Load the staged
+   configuration as `www-data` before replacing the installed file, then check
+   access again after replacement.
+7. Validate Apache/FreeRADIUS configuration, restore their previous active state
+   and recheck application-configuration access. Check an authenticated web route
+   and your normal RADIUS probes after the helper completes; active services alone
+   do not certify every application workflow.
 
 Stop any additional scheduled/custom writers yourself. Named database locations
 are not discovered automatically: migrate each separately. Backups are kept in a

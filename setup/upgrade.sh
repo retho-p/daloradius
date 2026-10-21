@@ -35,6 +35,7 @@ STAGE_DIR=""
 RUNNER=""
 ROLLBACK_IN_PROGRESS=false
 TMP_FILES=()
+DB_CONNECTION_ARGS=()
 
 log() {
     printf '[%s] %s\n' "$SCRIPT_NAME" "$*"
@@ -68,13 +69,15 @@ Options:
   --backup-dir PATH       Backup root (default: /root/daloradius-backups).
   -h, --help              Show this help.
 
-An explicitly supplied MariaDB option file must contain a [client] section with credentials and
-connection settings for the application database. It must be owned by root and not readable by the
-group or other users.
+An explicitly supplied MariaDB option file provides backup credentials/options. Its host,
+port, protocol, socket and database settings cannot override the installed application destination.
+The file must be owned by root and not readable by the group or other users.
+
+--apply interrupts the web portals and RADIUS authentication/accounting for the backup and upgrade.
 
 Examples:
   setup/upgrade.sh --check --ref origin/master
-  setup/upgrade.sh --apply --ref v2.3
+  setup/upgrade.sh --apply --ref COMMIT_PRINTED_BY_CHECK
 EOF
 }
 
@@ -359,12 +362,48 @@ prepare_client_config() {
     mode=$(stat -c '%a' -- "$DB_CONFIG")
     [[ "$owner" == 0 ]] || fail "MariaDB option file must be owned by root."
     (( (8#$mode & 077) == 0 )) || fail "MariaDB option file must have private permissions."
+    prepare_backup_destination
+}
+
+prepare_backup_destination() {
+    local options
+    options=$(mktemp /run/daloradius-destination.XXXXXX)
+    TMP_FILES+=("$options")
+    # Explicit CLI options take precedence over client-file connection settings.
+    # Match the migration runner: mysqli uses its Unix socket for localhost.
+    runuser -u www-data -- php -d display_errors=stderr -r '
+        require $argv[1];
+        if (!extension_loaded("mysqli")) {
+            fwrite(STDERR, "PHP mysqli is required (Debian package php-mysql).\n"); exit(1);
+        }
+        $host = $configValues["CONFIG_DB_HOST"] ?? "";
+        $port = $configValues["CONFIG_DB_PORT"] ?? 3306;
+        if (!is_string($host) || $host === "" || strpos($host, "\0") !== false
+            || (!is_int($port) && !is_string($port)) || !preg_match("/\\A[0-9]+\\z/D", (string)$port)
+            || (int)$port < 1 || (int)$port > 65535) {
+            fwrite(STDERR, "Invalid application database host or port.\n"); exit(1);
+        }
+        $options = ["--host=" . $host, "--port=" . (int)$port];
+        if ($host === "localhost") {
+            $socket = ini_get("mysqli.default_socket");
+            if (!$socket || $socket[0] !== "/" || strpos($socket, "\0") !== false) {
+                fwrite(STDERR, "Set an absolute mysqli.default_socket in PHP CLI before upgrading a localhost database.\n"); exit(1);
+            }
+            $options[] = "--protocol=SOCKET";
+            $options[] = "--socket=" . $socket;
+        } else {
+            $options[] = "--protocol=TCP";
+        }
+        foreach ($options as $option) { echo $option, "\0"; }
+    ' "$CONFIG_FILE" > "$options"
+    mapfile -d '' -t DB_CONNECTION_ARGS < "$options"
+    log "Backup destination is taken from the application configuration, not the client option file."
 }
 
 validate_database() {
     local database configured
     configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
-    database=$(mariadb --defaults-extra-file="$DB_CONFIG" --database="$configured" --batch --skip-column-names --execute='SELECT DATABASE();' 2>/dev/null) ||
+    database=$(mariadb --defaults-extra-file="$DB_CONFIG" "${DB_CONNECTION_ARGS[@]}" --database="$configured" --batch --skip-column-names --execute='SELECT DATABASE();' 2>/dev/null) ||
         fail "Could not connect to MariaDB."
     configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
     [[ -n "$database" && "$database" != NULL && "$database" == "$configured" ]] ||
@@ -393,7 +432,7 @@ prepare_backup() {
     dump="$BACKUP_DIR/database.sql"
     TMP_FILES+=("$dump.tmp")
     log "Creating database backup: $dump"
-    mariadb-dump --defaults-extra-file="$DB_CONFIG" \
+    mariadb-dump --defaults-extra-file="$DB_CONFIG" "${DB_CONNECTION_ARGS[@]}" \
         --single-transaction --quick --routines --events --triggers "$DB_NAME" > "$dump.tmp"
     [[ -s "$dump.tmp" ]] || fail "Database backup is empty."
     mv -- "$dump.tmp" "$dump"
@@ -504,8 +543,15 @@ run_migrations() {
     runuser -u www-data -- php "$RUNNER" --config="$CONFIG_FILE" --migrations-dir="$STAGE_DIR/contrib/db/migrations" --apply
 }
 
+validate_configuration_access() {
+    runuser -u www-data -- php -d display_errors=stderr -r '
+        require $argv[1];
+        exit(isset($configValues) && is_array($configValues) ? 0 : 1);
+    ' "$1" || fail "www-data cannot load the application configuration."
+}
+
 merge_configuration() {
-    local sample tmp config_dir uid gid mode
+    local sample tmp config_dir
     config_dir=$(dirname "$CONFIG_FILE")
     sample=$(mktemp "$config_dir/.daloradius.conf.sample.XXXXXX.php")
     TMP_FILES+=("$sample")
@@ -535,19 +581,19 @@ merge_configuration() {
     ' "$CONFIG_FILE" "$sample" > "$tmp"
     php -l "$tmp" >/dev/null
 
-    uid=$(stat -c '%u' -- "$CONFIG_FILE")
-    gid=$(stat -c '%g' -- "$CONFIG_FILE")
-    mode=$(stat -c '%a' -- "$CONFIG_FILE")
+    # Preserve the existing access policy (including POSIX ACLs) on the staged
+    # replacement, and verify it as the HTTP account before the atomic rename.
+    cp --attributes-only --preserve=mode,ownership -- "$CONFIG_FILE" "$tmp"
+    validate_configuration_access "$tmp"
     mv -f -- "$tmp" "$CONFIG_FILE"
     CONFIG_UPDATED=true
-    chown "$uid:$gid" -- "$CONFIG_FILE"
-    mode=$(printf '%o' $((8#$mode & 0770)))
-    chmod "$mode" -- "$CONFIG_FILE"
+    validate_configuration_access "$CONFIG_FILE"
     log "Merged the current configuration with the target sample."
 }
 
 validate_services() {
     local apache_was_active=$1 radius_was_active=$2
+    validate_configuration_access "$CONFIG_FILE"
     if [[ "$radius_was_active" == true ]]; then
         systemctl is-active --quiet freeradius || fail "FreeRADIUS is not active after the upgrade."
     fi
@@ -558,6 +604,7 @@ validate_services() {
 
 apply_upgrade() {
     local apache_was_active=false radius_was_active=false
+    log "Maintenance: stopping active web/RADIUS writers for the backup and upgrade."
     if systemctl is-active --quiet apache2; then
         apache_was_active=true
         APACHE_RESTORE_REQUIRED=true
@@ -593,7 +640,7 @@ apply_upgrade() {
 main() {
     parse_args "$@"
     validate_host
-    require_commands git mariadb realpath stat flock sort php runuser tar mktemp
+    require_commands git mariadb realpath stat flock sort php runuser tar mktemp cp
     if [[ "$APPLY" == true ]]; then
         require_commands mariadb-dump php runuser tar sha256sum mktemp systemctl apachectl freeradius
     fi
