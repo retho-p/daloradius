@@ -3,6 +3,7 @@
 #
 # This script intentionally upgrades only the daloRADIUS checkout and database.
 # It does not upgrade the operating system or rewrite Apache configuration.
+# The installed daloRADIUS configuration is loaded, never rewritten.
 
 set -Eeuo pipefail
 IFS=$'\n\t'
@@ -26,7 +27,6 @@ APACHE_RESTORE_REQUIRED=false
 FR_RESTORE_REQUIRED=false
 STAGE_DIR=""
 RUNNER=""
-TMP_FILES=()
 
 log() {
     printf '[%s] %s\n' "$SCRIPT_NAME" "$*"
@@ -59,6 +59,8 @@ Options:
   -h, --help              Show this help.
 
 Database migrations use the installed application configuration and account.
+The existing daloradius.conf.php is left unchanged. Review new settings in the
+release notes and configuration sample; add any required settings yourself.
 Backups and recovery are the administrator's responsibility. This script does
 not create backups or automatically roll back application/schema changes.
 Before --apply, back up the database, configuration and local application data
@@ -73,10 +75,6 @@ EOF
 }
 
 cleanup() {
-    local file
-    for file in "${TMP_FILES[@]}"; do
-        rm -f -- "$file"
-    done
     [[ -z "$STAGE_DIR" ]] || rm -rf -- "$STAGE_DIR"
 }
 
@@ -252,6 +250,10 @@ validate_git_state() {
     CURRENT_COMMIT=$(git -C "$APP_ROOT" rev-parse HEAD)
     git -C "$APP_ROOT" config remote."$REMOTE".url >/dev/null 2>&1 || \
         fail "Git remote does not exist: $REMOTE"
+    if git -C "$APP_ROOT" ls-files --error-unmatch -- \
+        app/common/includes/daloradius.conf.php >/dev/null 2>&1; then
+        fail "Application configuration is tracked by Git; refusing to risk changing it."
+    fi
 }
 
 fetch_target() {
@@ -266,6 +268,10 @@ fetch_target() {
     git -C "$APP_ROOT" cat-file -e \
         "$TARGET_COMMIT:app/common/includes/daloradius.conf.php.sample" || \
         fail "Target revision does not contain the daloRADIUS configuration sample."
+    if git -C "$APP_ROOT" cat-file -e \
+        "$TARGET_COMMIT:app/common/includes/daloradius.conf.php" 2>/dev/null; then
+        fail "Target revision tracks the local application configuration; refusing to overwrite it."
+    fi
 
     [[ "$CURRENT_COMMIT" == "$TARGET_COMMIT" ]] && {
         log "The checkout is already at $TARGET_COMMIT."
@@ -322,7 +328,7 @@ show_plan() {
     done; then
         fail "Could not enumerate database migrations."
     fi
-    log "Apache and FreeRADIUS configuration files will not be rewritten."
+    log "daloRADIUS, Apache and FreeRADIUS configuration files will not be rewritten."
     if [[ "$APPLY" == false ]]; then
         log "Check complete; no upgrade was applied. Use --apply to proceed."
     fi
@@ -341,46 +347,6 @@ validate_configuration_access() {
         require $argv[1];
         exit(isset($configValues) && is_array($configValues) ? 0 : 1);
     ' "$1" || fail "www-data cannot load the application configuration."
-}
-
-merge_configuration() {
-    local sample tmp config_dir
-    config_dir=$(dirname "$CONFIG_FILE")
-    sample=$(mktemp "$config_dir/.daloradius.conf.sample.XXXXXX.php")
-    TMP_FILES+=("$sample")
-    chmod 644 -- "$sample"
-    git -C "$APP_ROOT" show "$TARGET_COMMIT:app/common/includes/daloradius.conf.php.sample" > "$sample"
-
-    id www-data >/dev/null 2>&1 || fail "The www-data account is required to merge the PHP configuration."
-    runuser -u www-data -- test -r "$CONFIG_FILE" || \
-        fail "The www-data account cannot read $CONFIG_FILE."
-    tmp=$(mktemp "$config_dir/.daloradius.conf.php.XXXXXX")
-    TMP_FILES+=("$tmp")
-
-    runuser -u www-data -- php -d display_errors=stderr -r '
-        $localFile = $argv[1];
-        $sampleFile = $argv[2];
-        $configValues = [];
-        require $localFile;
-        $local = $configValues;
-        $configValues = [];
-        require $sampleFile;
-        $defaults = $configValues;
-        $merged = array_replace($defaults, $local);
-        echo "<?php\n";
-        foreach ($merged as $key => $value) {
-            echo "\$configValues[" . var_export($key, true) . "] = " . var_export($value, true) . ";\n";
-        }
-    ' "$CONFIG_FILE" "$sample" > "$tmp"
-    php -l "$tmp" >/dev/null
-
-    # Preserve the existing access policy (including POSIX ACLs) on the staged
-    # replacement, and verify it as the HTTP account before the atomic rename.
-    cp --attributes-only --preserve=mode,ownership -- "$CONFIG_FILE" "$tmp"
-    validate_configuration_access "$tmp"
-    mv -f -- "$tmp" "$CONFIG_FILE"
-    validate_configuration_access "$CONFIG_FILE"
-    log "Merged the current configuration with the target sample."
 }
 
 validate_services() {
@@ -413,7 +379,7 @@ apply_upgrade() {
     # Repository files are public source; private umask 077 is for temporary files.
     # Git creates replaced/new files using umask, so 077 would hide PHP from Apache.
     (umask 022; git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null)
-    merge_configuration
+    validate_configuration_access "$CONFIG_FILE"
     apachectl configtest >/dev/null
     freeradius -C
     [[ "$radius_was_active" == false ]] || systemctl start freeradius

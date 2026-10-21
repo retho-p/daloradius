@@ -22,9 +22,9 @@ consistent installation. The upgrade helper and migration runner do not
 create backups or perform automatic rollbacks. No backup account, destination
 or storage policy is imposed by daloRADIUS.
 
-The upgrader changes application files, merges configuration defaults and
-applies bundled schema migrations. It does **not** upgrade Debian packages,
-MariaDB, PHP or FreeRADIUS, convert MyISAM tables, replace Apache/FreeRADIUS
+The upgrader changes application files and applies bundled schema migrations.
+It leaves the installed `daloradius.conf.php` untouched. It does **not** upgrade
+Debian packages, MariaDB, PHP or FreeRADIUS, convert MyISAM tables, replace Apache/FreeRADIUS
 configuration, hash existing portal passwords or reconcile custom tables.
 Review [PDO prerequisites](pdo-database-upgrade.md) when crossing the PDO update.
 The existing `mysql`/`mysqli` database-engine setting can be retained.
@@ -56,6 +56,15 @@ the shared migration runner uses the installed `daloradius.conf.php` and the
 application's database account. The upgrade helper does not need the `mariadb`
 or `mariadb-dump` command-line clients or a separate account with dump privileges.
 
+**Keep your existing configuration.** The helper does not regenerate, merge or
+append settings to `daloradius.conf.php`: comments, PHP expressions and include
+statements remain intact, as do ownership, permissions and POSIX ACLs. Review the
+release notes and compare the new `daloradius.conf.php.sample` with your local
+configuration; add any required new settings yourself before applying the
+upgrade. A configuration tracked by Git, or a target that would introduce a
+tracked configuration file at that path, is refused before stopping services or
+starting migrations.
+
 `--check` fetches Git refs and creates temporary staging/lock files, but does not
 change deployed application files, stop services or write to the database.
 It checks the target files and migration history before any planned upgrade;
@@ -79,10 +88,8 @@ reminder and does not check or attest that a backup exists.
    migrations, use the shared runner to check the database and migration history.
 3. Stop Apache and FreeRADIUS if they were running.
 4. Run migrations from the **selected target**, using the common runner.
-5. Fast-forward the checkout and merge new sample defaults while retaining local
-   `configValues`, ownership, permissions and POSIX ACLs. Load the staged
-   configuration as `www-data` before replacing the installed file, then check
-   access again after replacement.
+5. Fast-forward the checkout without changing the existing configuration file,
+   then recheck that `www-data` can load it.
 6. Validate Apache/FreeRADIUS configuration, restore their previous active state
    and recheck application-configuration access. Check an authenticated web route
    and your normal RADIUS probes after the helper completes; active services alone
@@ -96,7 +103,7 @@ are not discovered automatically: migrate each separately.
 If a failure occurs before the application/schema update starts, services
 stopped by the helper are returned to their previous active state. Once the
 update starts, a failure leaves Apache/FreeRADIUS stopped: SQL DDL may already
-have committed, and application/configuration files may already have changed.
+have committed, and application files may already have changed.
 **There is no automatic Git reset, configuration restore or database rollback.**
 The helper prints the source and planned target revisions. Inspect the actual
 checkout, configuration and migration history; repair the failed step or restore
