@@ -15,6 +15,13 @@ one of the paths below; do not combine both procedures in the same upgrade.
 | Manual Debian or AlmaLinux installation | Follow the distribution upgrade procedure | `migrate-db.php --apply` |
 | Docker Compose | Rebuild/recreate the selected application images | Web entrypoint runs `migrate-db.php --apply` |
 
+**Backups and recovery belong to the administrator.** Before applying an
+upgrade, use your normal operational tools to back up the database,
+configuration and local application data, and verify that you can restore a
+consistent installation. The upgrade helper and migration runner do not
+create backups or perform automatic rollbacks. No backup account, destination
+or storage policy is imposed by daloRADIUS.
+
 The upgrader changes application files, merges configuration defaults and
 applies bundled schema migrations. It does **not** upgrade Debian packages,
 MariaDB, PHP or FreeRADIUS, convert MyISAM tables, replace Apache/FreeRADIUS
@@ -44,16 +51,10 @@ sudo bash setup/upgrade.sh --apply --ref REF
 A bare branch name such as `master` selects the fetched branch on `--remote`;
 qualified refs such as `origin/master`, release tags and commit IDs also work.
 The default is `origin/master`. `--root-dir` overrides `/var/www/daloradius`;
-`--remote` overrides `origin`; `--backup-dir` overrides
-`/root/daloradius-backups`. There is no need to enter the database password:
-connection settings come from the installed `daloradius.conf.php`.
-An optional private root-owned `--db-config` supplies backup credentials and
-client options, for example a separate account with dump privileges. The
-application configuration always determines the host, port, transport, socket
-and database; connection settings in the supplied file cannot redirect the
-backup to another instance. For `localhost`, PHP CLI must have an absolute
-`mysqli.default_socket`; other hosts use TCP. The migration runner still uses
-the application's database account.
+`--remote` overrides `origin`. There is no need to enter the database password:
+the shared migration runner uses the installed `daloradius.conf.php` and the
+application's database account. The upgrade helper does not need the `mariadb`
+or `mariadb-dump` command-line clients or a separate account with dump privileges.
 
 `--check` fetches Git refs and creates temporary staging/lock files, but does not
 change deployed application files, stop services or write to the database.
@@ -67,47 +68,47 @@ tracked/untracked changes are refused rather than discarded. Review and save
 local modifications separately; do not reset them blindly to bypass the check.
 
 **Plan a maintenance window.** Web portals and RADIUS authentication/accounting
-are unavailable while their services are stopped, including the time needed to
-create the backup. Large application archives or databases can extend this window.
+are unavailable while their services are stopped for the upgrade. Complete
+your own backup procedure before invoking `--apply`; the helper only prints a
+reminder and does not check or attest that a backup exists.
 
 `--apply` performs the following:
 
 1. Resolve and stage the exact fetched target commit, under a host upgrade lock.
-2. Check PHP mysqli/PDO MySQL, the database and migration history.
+2. Check configuration access and PHP mysqli/PDO MySQL; when the target contains
+   migrations, use the shared runner to check the database and migration history.
 3. Stop Apache and FreeRADIUS if they were running.
-4. Save a private file archive, database dump, application configuration,
-   source/target revisions and SHA-256 manifest.
-5. Run migrations from the **selected target**, using the common runner.
-6. Fast-forward the checkout and merge new sample defaults while retaining local
+4. Run migrations from the **selected target**, using the common runner.
+5. Fast-forward the checkout and merge new sample defaults while retaining local
    `configValues`, ownership, permissions and POSIX ACLs. Load the staged
    configuration as `www-data` before replacing the installed file, then check
    access again after replacement.
-7. Validate Apache/FreeRADIUS configuration, restore their previous active state
+6. Validate Apache/FreeRADIUS configuration, restore their previous active state
    and recheck application-configuration access. Check an authenticated web route
    and your normal RADIUS probes after the helper completes; active services alone
    do not certify every application workflow.
 
 Stop any additional scheduled/custom writers yourself. Named database locations
-are not discovered automatically: migrate each separately. Backups are kept in a
-unique directory printed by the script. A successful checksum/read-back verifies
-file integrity, not that an arbitrary production backup is restorable; rehearse
-restoration separately by restoring the generated dump into a separate database
-and comparing its contents.
+are not discovered automatically: migrate each separately.
 
 ### Failure recovery
 
-An error before SQL starts restores stopped services. After SQL starts, failures
-restore changed application/configuration files where possible but **do not
-restore the database automatically**. Apache/FreeRADIUS are left stopped because
-DDL can have committed. Inspect the backup and migration history, then restore
-or repair the database deliberately before starting the services:
+If a failure occurs before the application/schema update starts, services
+stopped by the helper are returned to their previous active state. Once the
+update starts, a failure leaves Apache/FreeRADIUS stopped: SQL DDL may already
+have committed, and application/configuration files may already have changed.
+**There is no automatic Git reset, configuration restore or database rollback.**
+The helper prints the source and planned target revisions. Inspect the actual
+checkout, configuration and migration history; repair the failed step or restore
+a coherent application/database state using your own backups before starting
+services:
 
 ```sh
 systemctl start freeradius apache2
 ```
 
-Do not issue that command until recovery is verified. The files archive excludes
-`.git`; the recorded source revision is retained in the existing Git checkout.
+Do not issue that command until recovery is verified. Do not downgrade only the
+application code after a schema change or blindly retry interrupted SQL.
 See [migration recovery](../../contrib/db/migrations/README.md#failure-and-recovery)
 for interrupted SQL. The migration runner adopts the previous Bash helper's
 `sha256`/full-path ledger only after validating every recorded file and checksum.
@@ -154,8 +155,8 @@ See [runner usage and limits](../../contrib/db/migrations/README.md).
 
 Do not use `upgrade.sh` inside Docker. Retain `.env`, database storage, `/data`
 and the FreeRADIUS logs volume. Do not delete data or use `down --volumes` as
-an upgrade command. Back up the database with a private client option file and
-verify restoration; also preserve application/FreeRADIUS data and configuration.
+an upgrade command. Back up the database and application/FreeRADIUS data and
+configuration using your normal operational tools, and verify restoration.
 
 For the repository's source-build Compose deployment, stop **both** writers
 before deploying the reviewed selected Git revision:

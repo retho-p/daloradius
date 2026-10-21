@@ -2,6 +2,8 @@
 
 For application upgrades, see the [Debian/manual/Docker upgrade guide](../../../doc/setup/upgrade.md).
 The Debian upgrader, fresh installer and Docker entrypoint all use this runner.
+Backups and recovery are administrator-managed; neither the runner nor the
+Debian upgrade helper creates backups or performs automatic rollbacks.
 
 From the root of the **updated** daloRADIUS checkout:
 

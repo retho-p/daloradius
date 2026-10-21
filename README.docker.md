@@ -99,7 +99,8 @@ provisioning, and rollout guidance, is documented in
 
 For current releases, use the [upgrade guide](doc/setup/upgrade.md). It covers
 the Debian upgrade helper, manual installations and Docker Compose, with a
-shared migration history and backup/recovery instructions.
+shared migration history. Backups and recovery remain the administrator's
+responsibility; the upgrade tools do not create backups automatically.
 
 ### Legacy/manual SQL migrations
 

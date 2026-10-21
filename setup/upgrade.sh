@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# daloRADIUS - safe Debian upgrade helper
+# daloRADIUS - Debian application and schema upgrade helper
 #
 # This script intentionally upgrades only the daloRADIUS checkout and database.
 # It does not upgrade the operating system or rewrite Apache configuration.
@@ -11,31 +11,22 @@ umask 077
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 APP_ROOT="/var/www/daloradius"
-DB_CONFIG=""
 REMOTE="origin"
 TARGET_REF="origin/master"
-BACKUP_ROOT="/root/daloradius-backups"
 APPLY=false
 REF_EXPLICIT=false
 CHECK_EXPLICIT=false
 
-BACKUP_DIR=""
 CONFIG_FILE=""
 LOCK_FILE="/run/lock/daloradius-upgrade.lock"
-CONFIG_BACKUP=""
 CURRENT_COMMIT=""
 TARGET_COMMIT=""
-DB_NAME=""
-CODE_UPDATED=false
-CONFIG_UPDATED=false
-MIGRATIONS_STARTED=false
+UPGRADE_STARTED=false
 APACHE_RESTORE_REQUIRED=false
 FR_RESTORE_REQUIRED=false
 STAGE_DIR=""
 RUNNER=""
-ROLLBACK_IN_PROGRESS=false
 TMP_FILES=()
-DB_CONNECTION_ARGS=()
 
 log() {
     printf '[%s] %s\n' "$SCRIPT_NAME" "$*"
@@ -56,24 +47,24 @@ Usage:
   setup/upgrade.sh --check [options]
   setup/upgrade.sh --apply [options]
 
-Safely upgrade a standard Debian installation of daloRADIUS.
+Upgrade the application and schema of a standard Debian daloRADIUS installation.
 
 Options:
+  --check                 Preview the target and migration history (the default).
   --apply                 Apply the planned upgrade. Without this, no service,
                           application file, or database schema is changed.
   --root-dir PATH         daloRADIUS checkout (default: /var/www/daloradius).
-  --db-config PATH        Optional root-owned MariaDB client option file.
-                          Default: use the installed application configuration.
   --remote NAME           Git remote to fetch (default: origin).
   --ref REF               Git ref or commit to deploy (default: REMOTE/master).
-  --backup-dir PATH       Backup root (default: /root/daloradius-backups).
   -h, --help              Show this help.
 
-An explicitly supplied MariaDB option file provides backup credentials/options. Its host,
-port, protocol, socket and database settings cannot override the installed application destination.
-The file must be owned by root and not readable by the group or other users.
+Database migrations use the installed application configuration and account.
+Backups and recovery are the administrator's responsibility. This script does
+not create backups or automatically roll back application/schema changes.
+Before --apply, back up the database, configuration and local application data
+using your normal tools, and verify that you can restore them.
 
---apply interrupts the web portals and RADIUS authentication/accounting for the backup and upgrade.
+--apply interrupts the web portals and RADIUS authentication/accounting during the upgrade.
 
 Examples:
   setup/upgrade.sh --check --ref origin/master
@@ -89,48 +80,14 @@ cleanup() {
     [[ -z "$STAGE_DIR" ]] || rm -rf -- "$STAGE_DIR"
 }
 
-rollback_changes() {
+handle_failure() {
     [[ "$APPLY" == true ]] || return 0
-    [[ "$ROLLBACK_IN_PROGRESS" == false ]] || return 0
-    [[ "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true || \
-       "$MIGRATIONS_STARTED" == true || "$APACHE_RESTORE_REQUIRED" == true || "$FR_RESTORE_REQUIRED" == true ]] || return 0
-
-    ROLLBACK_IN_PROGRESS=true
-    trap - ERR INT TERM
-
-    if [[ "$APACHE_RESTORE_REQUIRED" == true && \
-          ( "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true ) ]]; then
-        systemctl stop apache2 >/dev/null 2>&1 || \
-            warn "Could not stop Apache before restoring application files."
-    fi
-
-    if [[ "$CODE_UPDATED" == true || "$CONFIG_UPDATED" == true ]]; then
-        warn "The upgrade failed after changing files; restoring the previous application state."
-    fi
-
-    if [[ "$CONFIG_UPDATED" == true && -f "$CONFIG_BACKUP" ]]; then
-        if cp -p -- "$CONFIG_BACKUP" "$CONFIG_FILE"; then
-            log "Restored the previous daloRADIUS configuration."
-        else
-            warn "Could not restore $CONFIG_FILE; use the verified backup in $BACKUP_DIR."
-        fi
-    fi
-
-    if [[ "$CODE_UPDATED" == true && -n "$CURRENT_COMMIT" ]]; then
-        if (umask 022; git -C "$APP_ROOT" reset --hard "$CURRENT_COMMIT" >/dev/null); then
-            log "Restored application revision $CURRENT_COMMIT."
-        else
-            warn "Could not restore the previous Git revision; use the verified backup in $BACKUP_DIR."
-        fi
-    fi
-
-    if [[ "$MIGRATIONS_STARTED" == true ]]; then
-        warn "The database was not automatically restored. Review $BACKUP_DIR before any manual restore."
-    fi
-
-    if [[ "$MIGRATIONS_STARTED" == true ]]; then
+    if [[ "$UPGRADE_STARTED" == true ]]; then
         systemctl stop apache2 freeradius || warn "Could not stop all application writers."
-        warn "Application writers remain stopped. Repair or restore the database, then start Apache/FreeRADIUS."
+        warn "Application/schema changes may have started; no automatic rollback was attempted."
+        warn "Source revision: $CURRENT_COMMIT; planned target: $TARGET_COMMIT."
+        warn "Inspect the current checkout and migration history. Repair or restore using your own backups."
+        warn "Keep Apache/FreeRADIUS stopped until recovery is verified."
         return
     fi
     if [[ "$FR_RESTORE_REQUIRED" == true ]]; then
@@ -165,7 +122,7 @@ on_exit() {
     local rc=$?
     trap - EXIT ERR INT TERM
     if ((rc != 0)); then
-        rollback_changes || true
+        handle_failure || true
     fi
     cleanup
     exit "$rc"
@@ -194,11 +151,6 @@ parse_args() {
                 APP_ROOT=$2
                 shift 2
                 ;;
-            --db-config)
-                require_argument "$@"
-                DB_CONFIG=$2
-                shift 2
-                ;;
             --remote)
                 require_argument "$@"
                 REMOTE=$2
@@ -208,11 +160,6 @@ parse_args() {
                 require_argument "$@"
                 TARGET_REF=$2
                 REF_EXPLICIT=true
-                shift 2
-                ;;
-            --backup-dir)
-                require_argument "$@"
-                BACKUP_ROOT=$2
                 shift 2
                 ;;
             -h|--help)
@@ -263,37 +210,6 @@ validate_paths() {
     [[ ! -L "$CONFIG_FILE" ]] || fail "Refusing to operate on a symlinked configuration file."
     [[ -f "$APP_ROOT/app/common/includes/daloradius.conf.php.sample" ]] || \
         fail "Configuration sample not found in the checkout."
-
-
-}
-
-validate_backup_root() {
-    [[ "$BACKUP_ROOT" = /* ]] || fail "Backup directory must be an absolute path."
-    local parent owner mode
-    [[ ! -L "$BACKUP_ROOT" ]] || fail "Refusing to use a symlinked backup directory."
-    parent=$(realpath -e "$(dirname "$BACKUP_ROOT")") || \
-        fail "Backup directory parent does not exist: $(dirname "$BACKUP_ROOT")"
-    [[ -d "$parent" ]] || fail "Backup directory parent is not a directory: $parent"
-    BACKUP_ROOT=$(realpath -m -- "$parent/$(basename "$BACKUP_ROOT")")
-    [[ "$BACKUP_ROOT" != / ]] || fail "Backup directory must not be the filesystem root."
-    [[ "$BACKUP_ROOT" != "$APP_ROOT" && "$BACKUP_ROOT" != "$APP_ROOT/"* ]] || \
-        fail "Backup directory must be outside the daloRADIUS application root."
-    owner=$(stat -c '%u' -- "$parent")
-    mode=$(stat -c '%a' -- "$parent")
-    [[ "$owner" == 0 ]] || fail "Backup directory parent must be owned by root."
-    if (( 8#$mode & 022 )); then
-        fail "Backup directory parent must not be group/world writable (mode $mode)."
-    fi
-
-    if [[ -e "$BACKUP_ROOT" ]]; then
-        [[ -d "$BACKUP_ROOT" ]] || fail "Backup path is not a directory: $BACKUP_ROOT"
-        owner=$(stat -c '%u' -- "$BACKUP_ROOT")
-        mode=$(stat -c '%a' -- "$BACKUP_ROOT")
-        [[ "$owner" == 0 ]] || fail "Backup directory must be owned by root."
-        if (( 8#$mode & 077 )); then
-            fail "Backup directory must not be readable or writable by group or other users (mode $mode)."
-        fi
-    fi
 }
 
 validate_git_inputs() {
@@ -336,128 +252,6 @@ validate_git_state() {
     CURRENT_COMMIT=$(git -C "$APP_ROOT" rev-parse HEAD)
     git -C "$APP_ROOT" config remote."$REMOTE".url >/dev/null 2>&1 || \
         fail "Git remote does not exist: $REMOTE"
-}
-
-prepare_client_config() {
-    id www-data >/dev/null 2>&1 || fail "The www-data account is required."
-    runuser -u www-data -- test -r "$CONFIG_FILE" || fail "www-data cannot read the application configuration."
-    if [[ -z "$DB_CONFIG" ]]; then
-        DB_CONFIG=$(mktemp /run/daloradius-client.XXXXXX.cnf)
-        TMP_FILES+=("$DB_CONFIG")
-        runuser -u www-data -- php -d display_errors=0 -r '
-            require $argv[1];
-            $mapping = ["host"=>"CONFIG_DB_HOST", "port"=>"CONFIG_DB_PORT", "user"=>"CONFIG_DB_USER",
-                        "password"=>"CONFIG_DB_PASS"];
-            echo "[client]\n";
-            foreach ($mapping as $option=>$key) {
-                $value = (string)($configValues[$key] ?? ($option === "port" ? "3306" : ""));
-                $value = str_replace(["\\", "\"", "\n", "\r"], ["\\\\", "\\\"", "\\n", "\\r"], $value);
-                echo $option . "=\"" . $value . "\"\n";
-            }
-        ' "$CONFIG_FILE" > "$DB_CONFIG"
-    fi
-    [[ -f "$DB_CONFIG" && ! -L "$DB_CONFIG" ]] || fail "MariaDB option file must be a regular, non-symlinked file."
-    local owner mode
-    owner=$(stat -c '%u' -- "$DB_CONFIG")
-    mode=$(stat -c '%a' -- "$DB_CONFIG")
-    [[ "$owner" == 0 ]] || fail "MariaDB option file must be owned by root."
-    (( (8#$mode & 077) == 0 )) || fail "MariaDB option file must have private permissions."
-    prepare_backup_destination
-}
-
-prepare_backup_destination() {
-    local options
-    options=$(mktemp /run/daloradius-destination.XXXXXX)
-    TMP_FILES+=("$options")
-    # Explicit CLI options take precedence over client-file connection settings.
-    # Match the migration runner: mysqli uses its Unix socket for localhost.
-    runuser -u www-data -- php -d display_errors=stderr -r '
-        require $argv[1];
-        if (!extension_loaded("mysqli")) {
-            fwrite(STDERR, "PHP mysqli is required (Debian package php-mysql).\n"); exit(1);
-        }
-        $host = $configValues["CONFIG_DB_HOST"] ?? "";
-        $port = $configValues["CONFIG_DB_PORT"] ?? 3306;
-        if (!is_string($host) || $host === "" || strpos($host, "\0") !== false
-            || (!is_int($port) && !is_string($port)) || !preg_match("/\\A[0-9]+\\z/D", (string)$port)
-            || (int)$port < 1 || (int)$port > 65535) {
-            fwrite(STDERR, "Invalid application database host or port.\n"); exit(1);
-        }
-        $options = ["--host=" . $host, "--port=" . (int)$port];
-        if ($host === "localhost") {
-            $socket = ini_get("mysqli.default_socket");
-            if (!$socket || $socket[0] !== "/" || strpos($socket, "\0") !== false) {
-                fwrite(STDERR, "Set an absolute mysqli.default_socket in PHP CLI before upgrading a localhost database.\n"); exit(1);
-            }
-            $options[] = "--protocol=SOCKET";
-            $options[] = "--socket=" . $socket;
-        } else {
-            $options[] = "--protocol=TCP";
-        }
-        foreach ($options as $option) { echo $option, "\0"; }
-    ' "$CONFIG_FILE" > "$options"
-    mapfile -d '' -t DB_CONNECTION_ARGS < "$options"
-    log "Backup destination is taken from the application configuration, not the client option file."
-}
-
-validate_database() {
-    local database configured
-    configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
-    database=$(mariadb --defaults-extra-file="$DB_CONFIG" "${DB_CONNECTION_ARGS[@]}" --database="$configured" --batch --skip-column-names --execute='SELECT DATABASE();' 2>/dev/null) ||
-        fail "Could not connect to MariaDB."
-    configured=$(runuser -u www-data -- php -d display_errors=0 -r 'require $argv[1]; echo $configValues["CONFIG_DB_NAME"];' "$CONFIG_FILE")
-    [[ -n "$database" && "$database" != NULL && "$database" == "$configured" ]] ||
-        fail "The backup connection must select the same database as the application configuration."
-    DB_NAME=$database
-    log "MariaDB connection verified for database $DB_NAME."
-}
-
-prepare_backup() {
-    local stamp archive dump config_meta app_name
-    stamp=$(date -u +%Y%m%dT%H%M%SZ)
-    if [[ ! -e "$BACKUP_ROOT" ]]; then
-        mkdir -m 700 -- "$BACKUP_ROOT"
-    fi
-    BACKUP_DIR=$(mktemp -d "$BACKUP_ROOT/$stamp.XXXXXX")
-    chmod 700 -- "$BACKUP_DIR"
-
-    archive="$BACKUP_DIR/daloradius-files.tar.gz"
-    app_name=$(basename "$APP_ROOT")
-    log "Creating application backup: $archive"
-    tar -C "$(dirname "$APP_ROOT")" --exclude="$app_name/.git" \
-        -czf "$archive" "$app_name"
-    [[ -s "$archive" ]] || fail "Application backup is empty."
-    tar -tzf "$archive" >/dev/null || fail "Application backup could not be read back."
-
-    dump="$BACKUP_DIR/database.sql"
-    TMP_FILES+=("$dump.tmp")
-    log "Creating database backup: $dump"
-    mariadb-dump --defaults-extra-file="$DB_CONFIG" "${DB_CONNECTION_ARGS[@]}" \
-        --single-transaction --quick --routines --events --triggers "$DB_NAME" > "$dump.tmp"
-    [[ -s "$dump.tmp" ]] || fail "Database backup is empty."
-    mv -- "$dump.tmp" "$dump"
-    chmod 600 -- "$dump"
-
-    CONFIG_BACKUP="$BACKUP_DIR/daloradius.conf.php"
-    cp -p -- "$CONFIG_FILE" "$CONFIG_BACKUP"
-    config_meta="$BACKUP_DIR/metadata.txt"
-    {
-        printf 'application_root=%s\n' "$APP_ROOT"
-        printf 'database=%s\n' "$DB_NAME"
-        printf 'current_commit=%s\n' "$CURRENT_COMMIT"
-        printf 'target_ref=%s\n' "$TARGET_REF"
-        printf 'target_commit=%s\n' "$TARGET_COMMIT"
-        printf 'created_at_utc=%s\n' "$(date -u +%FT%TZ)"
-    } > "$config_meta"
-    chmod 600 -- "$config_meta"
-
-    (
-        cd "$BACKUP_DIR"
-        sha256sum daloradius-files.tar.gz database.sql daloradius.conf.php metadata.txt > SHA256SUMS
-    )
-    chmod 600 -- "$BACKUP_DIR/SHA256SUMS"
-    (cd "$BACKUP_DIR" && sha256sum -c SHA256SUMS >/dev/null)
-    log "Backup and checksum manifest created at $BACKUP_DIR."
 }
 
 fetch_target() {
@@ -539,7 +333,6 @@ run_migrations() {
         log "No database migration files in this target."
         return
     fi
-    MIGRATIONS_STARTED=true
     runuser -u www-data -- php "$RUNNER" --config="$CONFIG_FILE" --migrations-dir="$STAGE_DIR/contrib/db/migrations" --apply
 }
 
@@ -586,7 +379,6 @@ merge_configuration() {
     cp --attributes-only --preserve=mode,ownership -- "$CONFIG_FILE" "$tmp"
     validate_configuration_access "$tmp"
     mv -f -- "$tmp" "$CONFIG_FILE"
-    CONFIG_UPDATED=true
     validate_configuration_access "$CONFIG_FILE"
     log "Merged the current configuration with the target sample."
 }
@@ -604,7 +396,8 @@ validate_services() {
 
 apply_upgrade() {
     local apache_was_active=false radius_was_active=false
-    log "Maintenance: stopping active web/RADIUS writers for the backup and upgrade."
+    warn "No backup will be created. Verify your own database, configuration and local-data backups before upgrading."
+    log "Maintenance: stopping active web/RADIUS writers for the upgrade."
     if systemctl is-active --quiet apache2; then
         apache_was_active=true
         APACHE_RESTORE_REQUIRED=true
@@ -615,42 +408,37 @@ apply_upgrade() {
         FR_RESTORE_REQUIRED=true
         systemctl stop freeradius
     fi
-    prepare_backup
+    UPGRADE_STARTED=true
     run_migrations
-    CODE_UPDATED=true
-    # Repository files are public source; private umask 077 is for backups/config.
+    # Repository files are public source; private umask 077 is for temporary files.
     # Git creates replaced/new files using umask, so 077 would hide PHP from Apache.
     (umask 022; git -C "$APP_ROOT" merge --ff-only "$TARGET_COMMIT" >/dev/null)
     merge_configuration
     apachectl configtest >/dev/null
-    freeradius -XC > "$BACKUP_DIR/freeradius-config-check.log" 2>&1
+    freeradius -C
     [[ "$radius_was_active" == false ]] || systemctl start freeradius
     [[ "$apache_was_active" == false ]] || systemctl start apache2
     validate_services "$apache_was_active" "$radius_was_active"
     APACHE_RESTORE_REQUIRED=false
     FR_RESTORE_REQUIRED=false
-    CODE_UPDATED=false
-    CONFIG_UPDATED=false
-    MIGRATIONS_STARTED=false
+    UPGRADE_STARTED=false
     log "Upgrade completed successfully."
     log "Application revision: $TARGET_COMMIT"
-    log "Backup retained at: $BACKUP_DIR"
 }
 
 main() {
     parse_args "$@"
     validate_host
-    require_commands git mariadb realpath stat flock sort php runuser tar mktemp cp
+    require_commands git realpath stat flock sort php runuser tar mktemp cp
     if [[ "$APPLY" == true ]]; then
-        require_commands mariadb-dump php runuser tar sha256sum mktemp systemctl apachectl freeradius
+        require_commands systemctl apachectl freeradius
     fi
     validate_paths
-    validate_backup_root
     validate_git_inputs
     acquire_lock
     validate_git_state
-    prepare_client_config
-    validate_database
+    id www-data >/dev/null 2>&1 || fail "The www-data account is required."
+    validate_configuration_access "$CONFIG_FILE"
     fetch_target
     stage_target
     show_plan

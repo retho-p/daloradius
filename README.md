@@ -185,7 +185,8 @@ daloRADIUS supports Operators for complete management of the entire platform. Di
 
 For releases containing the tracked migration runner, start with the
 [upgrade guide](doc/setup/upgrade.md). It explains the recommended Debian,
-manual-install and Docker paths, including backups, maintenance and recovery.
+manual-install and Docker paths, including administrator-managed backups,
+maintenance and recovery. The upgrader does not create backups automatically.
 
 #### Legacy/manual procedure
 
