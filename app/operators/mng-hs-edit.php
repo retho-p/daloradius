@@ -38,12 +38,16 @@
 
 
     require_once __DIR__ . '/library/hotspot_pages_pdo.php';
-    $name=$name_enc=$edit_hotspotname='';$exists=false;
+    require_once __DIR__ . '/library/gis_read.php';
+    $name=$name_enc=$edit_hotspotname='';$exists=false;$can_view_map=false;
     try {
         $is_post=($_SERVER['REQUEST_METHOD'] ?? '')==='POST';
         $name=dalo_hotspot_name(($is_post ? $_POST : $_GET)['name'] ?? null);
         $pdo=dalo_pdo_connect($configValues,$_SESSION['location_name'] ?? 'default');
         $table=dalo_hotspot_table($configValues);
+        try {
+            $can_view_map=dalo_gis_permissions($pdo,$configValues,$_SESSION['operator_id'] ?? null)['view'];
+        } catch (Throwable $ignored) { $can_view_map=false; }
         if ($is_post) {
             if (!isset($_POST['csrf_token']) || !is_string($_POST['csrf_token']) || !dalo_check_csrf_token($_POST['csrf_token'])) { $failureMsg='CSRF token error'; }
             else {
@@ -75,6 +79,14 @@
     }
 
     print_title_and_help($title, $help);
+
+    if ($exists && $can_view_map && isset($id) && $id !== '') {
+        printf(
+            '<div class="mb-2"><a href="gis-main.php?hotspot=%s" class="btn btn-outline-secondary btn-sm"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>%s</a></div>' . "\n",
+            rawurlencode((string) $id),
+            htmlspecialchars(t('gis', 'showOnMap'), ENT_QUOTES, 'UTF-8')
+        );
+    }
 
     include_once('include/management/actionMessages.php');
 

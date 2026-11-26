@@ -31,6 +31,7 @@
     include_once implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'functions.php' ]);
 
     require_once __DIR__ . '/library/hotspot_pages_pdo.php';
+    require_once __DIR__ . '/library/gis_read.php';
 
     // init logging variables
     $log = "visited page: ";
@@ -73,9 +74,13 @@
 
     include implode(DIRECTORY_SEPARATOR, [ $configValues['OPERATORS_INCLUDE_MANAGEMENT'], 'pages_common.php' ]);
     $numrows=0;
+    $can_view_map=false;
     try {
         $pdo=dalo_pdo_connect($configValues,$_SESSION['location_name'] ?? 'default');$table=dalo_hotspot_table($configValues);
         $numrows=(int)dalo_hotspot_query($pdo,"SELECT COUNT(id) FROM $table")->fetchColumn();
+        try {
+            $can_view_map=dalo_gis_permissions($pdo,$configValues,$_SESSION['operator_id'] ?? null)['view'];
+        } catch (Throwable $ignored) { $can_view_map=false; }
     } catch (Throwable $e) { $failureMsg='Unable to load hotspots'; }
 
     if ($numrows > 0) {
@@ -134,6 +139,7 @@
         // table content
         $count = 0;
         foreach ($rows as $row) {
+            $raw_id=(string)$row[0];
             $raw_name=(string)$row[1];
             $rowlen = count($row);
 
@@ -154,6 +160,9 @@
                                 'actions' => array(),
                             );
             $tooltip['actions'][] = array( 'href' => sprintf('mng-hs-edit.php?name=%s', rawurlencode($raw_name) ), 'label' => t('Tooltip','HotspotEdit'), );
+            if ($can_view_map) {
+                $tooltip['actions'][] = array( 'href' => sprintf('gis-main.php?hotspot=%s', rawurlencode($raw_id) ), 'label' => t('gis','showOnMap'), );
+            }
             $tooltip['actions'][] = array( 'href' => 'acct-hotspot-compare.php', 'label' => t('all','Compare'), );
 
             // create tooltip

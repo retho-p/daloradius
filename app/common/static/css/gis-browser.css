@@ -1,0 +1,275 @@
+/* Full-width map workspace: hide the left sidebar on gis-main.php only. */
+#sidebarOffcanvas,
+button[data-bs-target="#sidebarOffcanvas"] {
+    display: none !important;
+}
+
+main.app-content {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+}
+
+.gis-toast-container {
+    z-index: 1080;
+}
+
+#gis-toast {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+#gis-toast.gis-toast-fading {
+    opacity: 0;
+    transform: translateY(0.5rem);
+}
+
+#gis-toast[hidden],
+#gis-browser [hidden] {
+    display: none !important;
+}
+
+#gis-browser .gis-edit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+#gis-browser .gis-search {
+    flex: 1 1 15rem;
+    max-width: 24rem;
+}
+
+#gis-browser .gis-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+#gis-browser .gis-filter-btn[aria-pressed="true"] {
+    color: var(--bs-btn-active-color, #fff);
+    background-color: var(--bs-secondary, #6c757d);
+    border-color: var(--bs-secondary, #6c757d);
+}
+
+#gis-browser .gis-filter-online[aria-pressed="true"],
+#gis-browser .gis-filter-located[aria-pressed="true"] {
+    background-color: var(--bs-success, #198754);
+    border-color: var(--bs-success, #198754);
+}
+
+#gis-browser .gis-filter-invalid[aria-pressed="true"] {
+    background-color: var(--bs-danger, #dc3545);
+    border-color: var(--bs-danger, #dc3545);
+}
+
+#gis-browser .gis-filter-count {
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+}
+
+#gis-browser .gis-filter-count:empty {
+    display: none;
+}
+
+#gis-browser .gis-browser-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    gap: 0.75rem;
+}
+
+#gis-browser .gis-map-column {
+    min-width: 0;
+}
+
+#gis-browser .gis-map {
+    margin: 0;
+    height: 74vh;
+    height: 74dvh;
+    min-height: 24rem;
+}
+
+#gis-browser .gis-map.gis-map-picking {
+    cursor: crosshair;
+}
+
+#gis-browser .gis-inspector {
+    height: 74vh;
+    height: 74dvh;
+    min-height: 24rem;
+    max-height: 60rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#gis-browser .gis-inventory {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 8rem;
+    padding: 0 0.75rem 0.5rem;
+    overflow: hidden;
+}
+
+#gis-browser .gis-hotspot-list {
+    overflow-y: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+#gis-browser .gis-pagination {
+    flex-shrink: 0;
+}
+
+#gis-browser .gis-hotspot-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.125rem 0.5rem;
+    padding: 0.5rem 0.4rem;
+    width: 100%;
+    text-align: start;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    font: inherit;
+    color: inherit;
+}
+
+#gis-browser .gis-hotspot-item:hover,
+#gis-browser .gis-hotspot-item[aria-pressed="true"] {
+    background: var(--bs-tertiary-bg, #f2f4f6);
+}
+
+#gis-browser .gis-hotspot-item[aria-pressed="true"] {
+    box-shadow: inset 3px 0 var(--bs-primary, #0d6efd);
+}
+
+#gis-browser .gis-hotspot-item:focus-visible {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: -2px;
+}
+
+#gis-browser .gis-hotspot-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+#gis-browser .gis-hotspot-meta {
+    grid-row: 2;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color, #6c757d);
+    overflow-wrap: anywhere;
+}
+
+#gis-browser .gis-hotspot-badges {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    max-width: 7.5rem;
+}
+
+#gis-browser .gis-hotspot-online {
+    font-size: 0.65rem;
+    font-weight: 500;
+}
+
+#gis-browser .gis-hotspot-state {
+    font-size: 0.7rem;
+    color: var(--bs-secondary-color, #6c757d);
+    text-align: end;
+}
+
+#gis-browser .gis-state-located {
+    color: var(--bs-success-text-emphasis, #146c43);
+}
+
+#gis-browser .gis-state-invalid {
+    color: var(--bs-danger-text-emphasis, #b02a37);
+}
+
+#gis-browser .gis-detail {
+    flex: 0 0 auto;
+    max-height: 58%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#gis-browser .gis-detail-body {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+#gis-browser .gis-clear-btn {
+    font-size: 0.65rem;
+}
+
+#gis-browser .gis-kv-table th {
+    width: 36%;
+    color: var(--bs-secondary-color, #6c757d);
+    font-weight: 500;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    padding-left: 0;
+}
+
+#gis-browser .gis-kv-table td {
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+    padding-right: 0;
+}
+
+#gis-browser .gis-copy-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+}
+
+#gis-browser .gis-copy-btn {
+    color: var(--bs-secondary-color, #6c757d);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+#gis-browser .gis-copy-btn:hover {
+    color: var(--bs-primary, #0d6efd);
+}
+
+@media (max-width: 1199.98px) {
+    #gis-browser .gis-browser-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
+    }
+}
+
+@media (max-width: 767.98px) {
+    #gis-browser .gis-browser-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #gis-browser .gis-inspector {
+        height: auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    #gis-browser .gis-hotspot-list {
+        max-height: 14rem;
+    }
+
+    #gis-browser .gis-detail {
+        max-height: none;
+    }
+
+    #gis-browser .gis-search {
+        max-width: none;
+    }
+}
